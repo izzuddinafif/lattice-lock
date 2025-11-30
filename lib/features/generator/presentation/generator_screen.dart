@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 import '../logic/generator_state.dart';
+import '../../../core/models/grid_config.dart';
 
 class GeneratorScreen extends ConsumerWidget {
   const GeneratorScreen({super.key});
@@ -329,6 +330,91 @@ class GeneratorScreen extends ConsumerWidget {
                   
                   const SizedBox(height: 24),
                   
+                  // Grid Size Configuration
+                  _buildSectionCard(
+                    title: "Grid Size Configuration",
+                    icon: Icons.grid_4x4,
+                    child: DropdownButtonFormField<GridConfig>(
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      // ignore: avoid_redundant_argument_values, deprecated_member_use
+                      value: state.selectedGridConfig,
+                      isExpanded: true,
+                      items: GridConfig.presets.map((config) {
+                        return DropdownMenuItem(
+                          value: config,
+                          child: Row(
+                            children: [
+                              Icon(
+                                _getGridSizeIcon(config.useCase),
+                                size: 20,
+                                color: _getGridSizeColor(config.useCase),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      config.displayName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      config.description,
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        color: Colors.grey[600],
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: _getGridSizeColor(config.useCase).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: _getGridSizeColor(config.useCase)),
+                                ),
+                                child: Text(
+                                  config.useCase,
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    color: _getGridSizeColor(config.useCase),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          notifier.updateGridConfig(val);
+                        }
+                      },
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  
                   // PDF Button
                   Container(
                     width: double.infinity,
@@ -483,12 +569,14 @@ class GeneratorScreen extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(13),
                       child: GridView.builder(
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 8,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: state.selectedGridConfig.size,
                           crossAxisSpacing: 1,
                           mainAxisSpacing: 1,
                         ),
-                        itemCount: state.encryptedPattern.isEmpty ? 64 : state.encryptedPattern.length,
+                        itemCount: state.encryptedPattern.isEmpty 
+                            ? state.selectedGridConfig.totalCells 
+                            : state.encryptedPattern.length,
                         itemBuilder: (context, index) {
                           final inkId = state.encryptedPattern.isEmpty ? 4 : state.encryptedPattern[index];
                           final ink = state.selectedMaterial.inks[inkId];
@@ -537,7 +625,7 @@ class GeneratorScreen extends ConsumerWidget {
                         Icon(Icons.grid_on, color: Colors.white.withValues(alpha: 0.7), size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          "8×8 Grid (64 cells) • ${state.inputText.isNotEmpty ? 'Active' : 'Waiting Input'}",
+                          "${state.selectedGridConfig.displayName} Grid (${state.selectedGridConfig.totalCells} cells) • ${state.inputText.isNotEmpty ? 'Active' : 'Waiting Input'}",
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 14,
@@ -647,6 +735,68 @@ class GeneratorScreen extends ConsumerWidget {
                                 ),
                               ],
                             ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Ink Color Legend
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.palette, color: Colors.blue.shade700),
+                              const SizedBox(width: 8),
+                              Text(
+                                "Ink Color Legend",
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                "(Hidden for small grids)",
+                                style: TextStyle(fontSize: 11, color: Colors.grey[600], fontStyle: FontStyle.italic),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 8,
+                            children: state.selectedMaterial.inks.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final ink = entry.value;
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: ink.visualColor,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.5),
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "${ink.label} (${ink.name})",
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
                           ),
                         ],
                       ),
@@ -795,31 +945,49 @@ class GeneratorScreen extends ConsumerWidget {
                       ),
                       child: LayoutBuilder(
                         builder: (context, constraints) {
-                          // Calculate optimal cell size for square grid
+                          // Calculate optimal cell size for square grid with mobile optimization
                           final availableWidth = constraints.maxWidth;
                           final availableHeight = constraints.maxHeight;
+                          final screenWidth = MediaQuery.of(context).size.width;
+                          final gridSize = state.selectedGridConfig.size;
 
-                          // Account for spacing (7px total for 8x8 grid: 7 vertical + 7 horizontal)
-                          final totalSpacing = 7.0;
+                          // Mobile-responsive minimum cell size
+                          final minCellSize = screenWidth < 600
+                              ? (gridSize > 12 ? 15.0 : 25.0) // Smaller min for very large grids on mobile
+                              : (gridSize > 16 ? 18.0 : 30.0); // Larger minimum for desktop
+
+                          // Account for spacing (gridSize-1)px total for both vertical and horizontal
+                          final totalSpacing = (gridSize - 1).toDouble();
                           final usableSpace = math.min(availableWidth, availableHeight) - totalSpacing;
-                          final cellSize = usableSpace / 8;
+                          final cellSize = usableSpace / gridSize;
 
                           // Ensure minimum comfortable size for mobile touch and readability
-                          final finalCellSize = math.max(cellSize, 32.0);
-                          final finalContainerSize = finalCellSize * 8 + totalSpacing;
+                          final finalCellSize = math.max(cellSize, minCellSize);
+
+                          // Limit maximum size for very large grids to prevent overflow
+                          final maxContainerSize = screenWidth < 600
+                              ? screenWidth * 0.8   // Use 80% of screen width on mobile
+                              : math.min(availableWidth, availableHeight) * 0.9; // 90% on desktop
+
+                          final finalContainerSize = math.min(
+                            finalCellSize * gridSize + totalSpacing,
+                            maxContainerSize
+                          );
 
                           return SizedBox(
                             width: finalContainerSize,
                             height: finalContainerSize,
                             child: GridView.builder(
                               physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 8,
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: gridSize,
                                 crossAxisSpacing: 1,
                                 mainAxisSpacing: 1,
                                 childAspectRatio: 1,
                               ),
-                              itemCount: state.encryptedPattern.isEmpty ? 64 : state.encryptedPattern.length,
+                              itemCount: state.encryptedPattern.isEmpty 
+                                  ? state.selectedGridConfig.totalCells 
+                                  : state.encryptedPattern.length,
                               itemBuilder: (context, index) {
                                 final inkId = state.encryptedPattern.isEmpty ? 4 : state.encryptedPattern[index];
                                 final ink = state.selectedMaterial.inks[inkId];
@@ -835,22 +1003,24 @@ class GeneratorScreen extends ConsumerWidget {
                                       ),
                                     ),
                                     child: Center(
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          ink.label,
-                                          style: TextStyle(
-                                            fontSize: math.min(finalCellSize * 0.35, 14.0), // Scaled font with max limit
-                                            fontWeight: FontWeight.bold,
-                                            color: ink.visualColor.computeLuminance() > 0.5
-                                                ? Colors.black
-                                                : Colors.white,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
+                                      child: finalCellSize < 30.0
+                                          ? const SizedBox() // Hide text for small cells
+                                          : FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                ink.label,
+                                                style: TextStyle(
+                                                  fontSize: math.min(finalCellSize * 0.35, 14.0), // Scaled font with max limit
+                                                  fontWeight: FontWeight.bold,
+                                                  color: ink.visualColor.computeLuminance() > 0.5
+                                                      ? Colors.black
+                                                      : Colors.white,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
                                     ),
                                   ),
                                 );
@@ -862,7 +1032,7 @@ class GeneratorScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      "8×8 Grid • ${state.inputText.isNotEmpty ? 'Active' : 'Waiting Input'}",
+                      "${state.selectedGridConfig.displayName} Grid • ${state.inputText.isNotEmpty ? 'Active' : 'Waiting Input'}",
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 12,
@@ -1016,5 +1186,59 @@ class GeneratorScreen extends ConsumerWidget {
         child,
       ],
     );
+  }
+
+  IconData _getGridSizeIcon(String useCase) {
+    switch (useCase.toLowerCase()) {
+      case 'poc':
+      case 'demo':
+        return Icons.speed;
+      case 'education':
+      case 'testing':
+        return Icons.school;
+      case 'advanced':
+        return Icons.trending_up;
+      case 'production':
+      case 'enterprise':
+        return Icons.business;
+      case 'professional':
+        return Icons.work;
+      case 'research':
+      case 'scientific':
+        return Icons.science;
+      case 'industrial':
+        return Icons.factory;
+      case 'high security':
+        return Icons.security;
+      default:
+        return Icons.grid_4x4;
+    }
+  }
+
+  Color _getGridSizeColor(String useCase) {
+    switch (useCase.toLowerCase()) {
+      case 'poc':
+      case 'demo':
+        return Colors.green;
+      case 'education':
+      case 'testing':
+        return Colors.blue;
+      case 'advanced':
+        return Colors.orange;
+      case 'production':
+      case 'enterprise':
+        return Colors.purple;
+      case 'professional':
+        return Colors.indigo;
+      case 'research':
+      case 'scientific':
+        return Colors.teal;
+      case 'industrial':
+        return Colors.grey;
+      case 'high security':
+        return Colors.red;
+      default:
+        return Colors.blue;
+    }
   }
 }

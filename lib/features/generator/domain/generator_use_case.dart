@@ -1,9 +1,4 @@
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
 import 'dart:convert';
 import '../../encryption/domain/encryption_strategy.dart';
 import '../../encryption/data/chaos_strategy.dart';
@@ -12,6 +7,8 @@ import '../../encryption/data/arnolds_cat_map_strategy.dart';
 import '../../material/models/ink_profile.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/native_crypto_service.dart';
+import '../../../core/services/pdf_service.dart';
+import '../../../core/services/history_service.dart';
 
 class GeneratorUseCase {
   EncryptionStrategy _encryptionStrategy = ChaosLogisticStrategy(); // Default strategy
@@ -140,12 +137,16 @@ class GeneratorUseCase {
   Future<List<int>> generatePattern({
     required String inputText,
     required String algorithm,
+    int? gridSize, // Optional grid size parameter
   }) async {
     // Set algorithm based on selection
     setAlgorithm(algorithm);
 
+    // Calculate total cells based on grid size (default to 8x8 for backward compatibility)
+    final totalCells = AppConstants.getTotalCells(gridSize ?? AppConstants.defaultGridSize);
+
     // Encrypt input text to pattern
-    final encryptedData = _encryptionStrategy.encrypt(inputText, AppConstants.totalCells);
+    final encryptedData = _encryptionStrategy.encrypt(inputText, totalCells);
     return encryptedData;
   }
 
@@ -153,144 +154,73 @@ class GeneratorUseCase {
     required List<int> pattern,
     required MaterialProfile material,
     required String inputText,
+    int? gridSize, // Optional grid size parameter
   }) async {
-    final pdf = pw.Document();
-    
-    // Create the blueprint page
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(20),
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // Header
-              pw.Text(
-                'LatticeLock Security Tag Blueprint',
-                style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
-              ),
-              pw.SizedBox(height: 20),
-              
-              // Information section
-              pw.Container(
-                padding: const pw.EdgeInsets.all(10),
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColors.grey),
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
-                ),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('Input: $inputText', style: const pw.TextStyle(fontSize: 12)),
-                    pw.Text('Material: ${material.name}', style: const pw.TextStyle(fontSize: 12)),
-                    pw.Text('Generated: ${DateTime.now().toIso8601String()}', style: const pw.TextStyle(fontSize: 10)),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 20),
-              
-              // Grid pattern
-              _buildGridPattern(pattern, material),
-              pw.SizedBox(height: 20),
-              
-              // Material reference
-              _buildMaterialReference(material),
-            ],
-          );
+    try {
+      final pdfService = PDFService.create();
+      final historyService = HistoryService.create();
+
+      // Use provided grid size or default to 8x8 for backward compatibility
+      final actualGridSize = gridSize ?? AppConstants.defaultGridSize;
+
+      // Convert pattern to 2D array for compatibility
+      final pattern2D = <List<int>>[];
+      for (int i = 0; i < pattern.length; i += actualGridSize) {
+        final end = (i + actualGridSize).clamp(0, pattern.length);
+        pattern2D.add(pattern.sublist(i, end));
+      }
+
+      // Create PDF metadata
+      final metadata = PDFMetadata(
+        filename: 'blueprint_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        title: 'LatticeLock Security Tag Blueprint',
+        batchCode: inputText.substring(0, inputText.length.clamp(0, 20)),
+        algorithm: _encryptionStrategy.runtimeType.toString(),
+        materialProfile: material.name,
+        timestamp: DateTime.now(),
+        pattern: pattern2D,
+        additionalData: {
+          'inputText': inputText,
+          'materialName': material.name,
+          'patternLength': pattern.length,
+          'gridSize': actualGridSize,
+          'totalCells': actualGridSize * actualGridSize,
         },
-      ),
-    );
+      );
 
-    // Save PDF
-    final directory = await getApplicationDocumentsDirectory();
-    final blueprintDir = Directory('${directory.path}/${AppConstants.pdfOutputFolder}');
-    if (!await blueprintDir.exists()) {
-      await blueprintDir.create(recursive: true);
+      // Generate PDF
+      final pdfResult = await pdfService.generatePDF(metadata);
+
+      if (pdfResult.success) {
+        // Save to history
+        final historyEntry = PatternHistoryEntry(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          batchCode: metadata.batchCode,
+          algorithm: metadata.algorithm,
+          materialProfile: metadata.materialProfile,
+          pattern: pattern2D,
+          timestamp: metadata.timestamp,
+          pdfPath: metadata.filename,
+          metadata: metadata.additionalData,
+        );
+
+        await historyService.saveEntry(historyEntry);
+
+        // Download or share PDF based on platform
+        await pdfService.downloadOrSharePDF(pdfResult);
+
+        if (kDebugMode) {
+          print('PDF generated and saved successfully: ${metadata.filename}');
+        }
+      } else {
+        throw Exception('PDF generation failed: ${pdfResult.error}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('PDF generation error: $e');
+      }
+      rethrow;
     }
-
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = 'blueprint_$timestamp.pdf';
-    final file = File('${blueprintDir.path}/$fileName');
-    
-    await file.writeAsBytes(await pdf.save());
-
-    // Optional: Add logging for development only
-    if (kDebugMode) {
-      print('PDF generated: ${file.path}');
-    }
   }
 
-  pw.Widget _buildGridPattern(List<int> pattern, MaterialProfile material) {
-    return pw.Container(
-      width: 400,
-      height: 400,
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.black, width: 2),
-      ),
-      child: pw.GridView(
-        crossAxisCount: AppConstants.gridSize,
-        childAspectRatio: 1,
-        children: pattern.map((inkId) {
-          final ink = material.inks[inkId];
-          return pw.Container(
-            decoration: pw.BoxDecoration(
-              color: _convertToPdfColor(ink.visualColor),
-              border: pw.Border.all(color: PdfColors.grey300),
-            ),
-            child: pw.Center(
-              child: pw.Text(
-                ink.label,
-                style: pw.TextStyle(
-                  fontSize: 8,
-                  color: PdfColors.white,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
   }
-
-  pw.Widget _buildMaterialReference(MaterialProfile material) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(10),
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey),
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(
-            'Material Reference',
-            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 10),
-          ...material.inks.map((ink) => pw.Row(
-            children: [
-              pw.Container(
-                width: 20,
-                height: 20,
-                decoration: pw.BoxDecoration(
-                  color: _convertToPdfColor(ink.visualColor),
-                ),
-              ),
-              pw.SizedBox(width: 10),
-              pw.Text('${ink.label}: ${ink.name}', style: const pw.TextStyle(fontSize: 10)),
-            ],
-          )),
-        ],
-      ),
-    );
-  }
-
-  PdfColor _convertToPdfColor(Color flutterColor) {
-    return PdfColor(
-      (flutterColor.r * 255.0).round().clamp(0, 255) / 255,
-      (flutterColor.g * 255.0).round().clamp(0, 255) / 255,
-      (flutterColor.b * 255.0).round().clamp(0, 255) / 255,
-    );
-  }
-}
