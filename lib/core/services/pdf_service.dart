@@ -1,5 +1,7 @@
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import 'pdf_web_service.dart';
 import 'pdf_web_service_stub.dart';
+import 'pdf_native_service.dart';
 
 /// Model for PDF generation metadata
 class PDFMetadata {
@@ -67,8 +69,17 @@ abstract class PDFService {
 
   /// Get platform-specific service implementation
   factory PDFService.create() {
-    // Temporarily use stub everywhere to eliminate JS interop issues
-    return WebPDFServiceStub();
+    // Use stub only in debug/test mode to avoid JS interop issues
+    if (kDebugMode) {
+      return WebPDFServiceStub();
+    }
+
+    // Use proper platform-specific services in production
+    if (kIsWeb) {
+      return WebPDFService();
+    } else {
+      return NativePDFService();
+    }
   }
 }
 

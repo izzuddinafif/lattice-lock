@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'dart:math' as math;
 import '../logic/generator_state.dart';
 import '../../../core/models/grid_config.dart';
@@ -538,15 +538,16 @@ class GeneratorScreen extends ConsumerWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: state.selectedGridConfig.size,
-                          crossAxisSpacing: 1,
-                          mainAxisSpacing: 1,
+                          crossAxisSpacing: _getGridSpacing(state.selectedGridConfig.size),
+                          mainAxisSpacing: _getGridSpacing(state.selectedGridConfig.size),
                         ),
-                        itemCount: state.encryptedPattern.isEmpty 
-                            ? state.selectedGridConfig.totalCells 
+                        itemCount: state.encryptedPattern.isEmpty
+                            ? state.selectedGridConfig.totalCells
                             : state.encryptedPattern.length,
                         itemBuilder: (context, index) {
                           final inkId = state.encryptedPattern.isEmpty ? 4 : state.encryptedPattern[index];
                           final ink = state.selectedMaterial.inks[inkId];
+                          final shouldShowText = _shouldShowGridText(state.selectedGridConfig.size);
 
                           return Tooltip(
                             message: "${ink.name} (ID: $inkId)",
@@ -554,22 +555,22 @@ class GeneratorScreen extends ConsumerWidget {
                               decoration: BoxDecoration(
                                 color: ink.visualColor,
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.1),
-                                  width: 0.5,
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  width: 0.3,
                                 ),
                               ),
-                              child: Center(
+                              child: shouldShowText ? Center(
                                 child: Text(
                                   ink.label,
                                   style: TextStyle(
-                                    fontSize: 9,
+                                    fontSize: _getTextSize(state.selectedGridConfig.size),
                                     fontWeight: FontWeight.bold,
-                                    color: ink.visualColor.computeLuminance() > 0.5 
-                                        ? Colors.black 
+                                    color: ink.visualColor.computeLuminance() > 0.5
+                                        ? Colors.black
                                         : Colors.white,
                                   ),
                                 ),
-                              ),
+                              ) : null,
                             ),
                           );
                         },
@@ -601,13 +602,55 @@ class GeneratorScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
+
+                  const SizedBox(height: 16),
+
+                  // Color Legend
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.palette, color: Colors.cyanAccent, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Ink Colors",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: state.selectedMaterial.inks.asMap().entries.map((entry) {
+                            final inkId = entry.key;
+                            final ink = entry.value;
+                            return _buildInkLegendItem(inkId, ink);
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
+            ),  // Close Expanded (right panel)
+        ],  // Close Row children
+      ),  // Close Row
+    );  // Close Scaffold
   }
 
   Widget _buildMobileLayout(BuildContext context, GeneratorState state, GeneratorNotifier notifier) {
@@ -970,15 +1013,14 @@ class GeneratorScreen extends ConsumerWidget {
                                       ),
                                     ),
                                     child: Center(
-                                      child: _shouldHideText(gridSize, finalCellSize, screenWidth)
-                                          ? const SizedBox() // Hide text for small cells or large grids
-                                          : FittedBox(
+                                      child: _shouldShowGridText(gridSize)
+                                          ? FittedBox(
                                               fit: BoxFit.scaleDown,
                                               alignment: Alignment.center,
                                               child: Text(
                                                 ink.label,
                                                 style: TextStyle(
-                                                  fontSize: math.min(finalCellSize * 0.35, 14.0), // Scaled font with max limit
+                                                  fontSize: math.min(finalCellSize * 0.25, 8.0), // Much smaller scaled font
                                                   fontWeight: FontWeight.bold,
                                                   color: ink.visualColor.computeLuminance() > 0.5
                                                       ? Colors.black
@@ -987,7 +1029,8 @@ class GeneratorScreen extends ConsumerWidget {
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
-                                            ),
+                                            )
+                                          : const SizedBox(), // Hide text for large grids
                                     ),
                                   ),
                                 );
@@ -1209,25 +1252,111 @@ class GeneratorScreen extends ConsumerWidget {
     }
   }
 
-  /// Determines whether text should be hidden in grid cells
-  ///
-  /// Text is hidden when:
-  /// 1. Cell size is less than 30px (for readability on all platforms)
-  /// 2. Grid size is 24x24 or larger on web/desktop (to reduce visual clutter)
-  bool _shouldHideText(int gridSize, double cellSize, double screenWidth) {
-    // Always hide text for very small cells (existing behavior)
-    if (cellSize < 30.0) {
-      return true;
+  /// Build individual ink legend item
+  Widget _buildInkLegendItem(int inkId, dynamic ink) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: ink.visualColor.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: ink.visualColor,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Color square
+          Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: ink.visualColor,
+              borderRadius: BorderRadius.circular(3),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3),
+                width: 0.5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Text label
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                ink.label,
+                style: TextStyle(
+                  color: ink.visualColor.computeLuminance() > 0.5
+                      ? Colors.black
+                      : Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'ID: $inkId',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Determines whether text should be shown in grid cells
+  bool _shouldShowGridText(int gridSize) {
+    // Hide text for large grids to prevent clutter
+    if (gridSize >= 16) return false;
+
+    // Hide text for medium grids on web/desktop
+    if (kIsWeb && gridSize >= 10) return false;
+
+    return true;
+  }
+
+  /// Calculate appropriate text size based on grid size
+  double _getTextSize(int gridSize) {
+    switch (gridSize) {
+      case 4:
+      case 6:
+        return 12.0;
+      case 8:
+        return 10.0;
+      case 10:
+      case 12:
+        return 8.0;
+      case 16:
+        return 6.0;
+      default:
+        return 8.0; // Default for unknown grid sizes
     }
+  }
 
-    // Hide text for large grids (24x24 and above) on web/desktop
-    // Mobile keeps text to maintain usability even on larger grids
-    final isWebOrDesktop = kIsWeb || screenWidth >= 600;
-
-    if (isWebOrDesktop && gridSize >= 24) {
-      return true;
+  /// Calculate appropriate grid spacing based on grid size
+  double _getGridSpacing(int gridSize) {
+    switch (gridSize) {
+      case 4:
+      case 6:
+        return 2.0;
+      case 8:
+        return 1.5;
+      case 10:
+      case 12:
+        return 1.0;
+      case 16:
+      case 20:
+      case 24:
+      case 32:
+        return 0.5;
+      default:
+        return 1.0; // Default spacing
     }
-
-    return false;
   }
 }

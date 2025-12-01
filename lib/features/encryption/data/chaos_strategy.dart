@@ -1,37 +1,99 @@
+import 'package:flutter/foundation.dart';
 import '../domain/encryption_strategy.dart';
 import 'dart:convert';
+import 'dart:math' as math;
 
 class ChaosLogisticStrategy implements EncryptionStrategy {
   @override
-  String get name => "Logistic Map (Chaos)";
+  String get name => "Logistic Map (Enhanced Chaos)";
 
   @override
   List<int> encrypt(String input, int length) {
-    // 1. Generate Seed dari Input - IMPROVED ENTROPY
+    print('🌟️ LOGISTIC encrypt() called with input="$input", length=$length');
+
+    // 1. Generate MAXIMUM entropy seed from input
     final bytes = utf8.encode(input);
+    double x = 0.6123456789; // Golden ratio conjugate
+
+    // Multiple chaotic seed sources
     int hash = 0;
+    int hash2 = 0;
     for (int i = 0; i < bytes.length; i++) {
-      hash = ((hash << 5) - hash + bytes[i]) & 0xFFFFFFFF;
+      hash = ((hash << 5) - hash + bytes[i] * 31) & 0xFFFFFFFF;
+      hash2 = ((hash2 << 7) + hash2 + bytes[i] * (i + 1)) & 0xFFFFFFFF;
     }
 
-    // Use multiple entropy sources for better distribution
-    double x = ((hash % 1000000) + (input.length * 137)) / 1000000.0;
-    if (x <= 0.01 || x >= 0.99) x = 0.123456789; // Avoid edge cases
+    // Combine multiple entropy sources with maximum sensitivity
+    x = ((hash + hash2) % 999983) / 999984.0;
+    x = x + (bytes.length * bytes.length * 97) / 999984.0;
+    x = x + (input.hashCode * 211) % 999984.0;
 
-    const double r = 3.99; // Parameter Chaos total
+    // Add prime number chaos
+    final primes = [9973, 9967, 99991, 999983, 999999];
+    int primeIndex = (hash % primes.length);
+    x = x * primes[primeIndex] / 100000.0;
+    x = x % 1.0;
+    if (x < 0.001) x = 0.001;
+    if (x > 0.999) x = 0.999;
+
+    print('🌟️ LOGISTIC: Initial x=$x, hash=$hash, hash2=$hash2');
+
+    const double r = 3.999999999; // Parameter near chaos threshold
     List<int> grid = [];
 
-    // 2. Generate Chaos Stream
+    // 2. Generate TRULY chaotic stream with maximum sensitivity
     for (int i = 0; i < length; i++) {
-      // Rumus Logistic Map: x_next = r * x * (1 - x)
-      x = r * x * (1 - x);
+      // Input-sensitive perturbation at EACH step
+      int byteInfluence = bytes[i % bytes.length] * (i + 1) * (bytes.length + 13);
+      double perturbation = (byteInfluence % 239) / 10000.0; // Bigger impact
 
-      // 3. Quantization (Map 0.0-1.0 ke 0-4)
+      // Modify x before logistic map
+      x = x + perturbation;
+      if (x >= 1.0) x = x - 0.999;
+
+      // Multiple logistic map operations for increased chaos
+      for (int j = 0; j < 3; j++) {
+        x = r * x * (1.0 - x);
+
+        // Add position-based chaos
+        x = x + (math.sin(i * 0.7 + j) * 0.1);
+        x = x + (math.cos(i * 1.3 + j * 0.5) * 0.05);
+
+        // Keep x in valid range
+        if (x < 0.0) x = 0.001;
+        if (x > 1.0) x = 0.999;
+      }
+
+      // EXTREME input coupling for quantization
       int inkId = (x * 5).floor();
-      if (inkId > 4) inkId = 4; // Safety clamp
+      if (inkId > 4) inkId = 4;
+
+      // Add chaotic position factors
+      int positionFactor1 = ((i * i * 7) + (bytes[i % bytes.length] * (i + 3))) % 13;
+      int positionFactor2 = ((i * i * i * 13) + (hash >> (i % 8)) + bytes[(i * 2) % bytes.length]) % 17;
+      positionFactor2 ^= (hash2 >> (i % 4)) & 15;
+
+      inkId = (inkId + positionFactor1 + positionFactor2) % 5;
+
+      // Re-seed frequently
+      if (i > 0 && i % 13 == 0) {
+        int reseed = bytes[(i ~/ 13) % bytes.length] * (bytes.length + i + 7) * 17;
+        x = (x + (reseed % 137) / 1000.0) % 1.0;
+      }
+
+      // Add final input modification
+      int finalMod = (bytes[(i + bytes.length) % bytes.length] + hash + hash2 + i) % 23;
+      inkId = (inkId + finalMod) % 5;
+
+      if (kDebugMode && i < 10) {
+        print('🌟️ LOGISTIC: i=$i, x=$x, inkId=$inkId, pos1=$positionFactor1, pos2=$positionFactor2, finalMod=$finalMod');
+      }
 
       grid.add(inkId);
     }
+
+    print('🌟️ LOGISTIC: Final pattern for "$input": first_10=${grid.take(10).join(',')}');
+    print('🌟️ LOGISTIC: Pattern summary: length=${grid.length}, unique=${grid.toSet().length}');
 
     return grid;
   }

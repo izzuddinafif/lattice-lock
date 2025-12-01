@@ -119,20 +119,26 @@ class GeneratorUseCase {
   }
 
   void setAlgorithm(String algorithm) {
+    print('🎯 ALGORITHM SELECTION: Setting algorithm to "$algorithm"');
     switch (algorithm) {
       case 'chaos_logistic':
+        print('🎯 ALGORITHM SELECTED: Chaos Logistic Strategy');
         _encryptionStrategy = ChaosLogisticStrategy();
         break;
       case 'chaos_tent':
+        print('🎯 ALGORITHM SELECTED: Tent Map Strategy');
         _encryptionStrategy = TentMapStrategy();
         break;
       case 'chaos_arnolds_cat':
+        print('🎯 ALGORITHM SELECTED: Arnold\'s Cat Map Strategy');
         _encryptionStrategy = ArnoldsCatMapStrategy();
         break;
       default:
+        print('🎯 ALGORITHM DEFAULT: Using Chaos Logistic Strategy (unknown: $algorithm)');
         _encryptionStrategy = ChaosLogisticStrategy();
         break;
     }
+    print('🎯 ALGORITHM TYPE: ${_encryptionStrategy.runtimeType}');
   }
 
   Future<List<int>> generatePattern({
@@ -140,14 +146,20 @@ class GeneratorUseCase {
     required String algorithm,
     int? gridSize, // Optional grid size parameter
   }) async {
+    print('🚀 generatePattern() called with inputText="$inputText", algorithm="$algorithm", gridSize=$gridSize');
+
     // Set algorithm based on selection
     setAlgorithm(algorithm);
 
     // Calculate total cells based on grid size (default to 8x8 for backward compatibility)
     final totalCells = AppConstants.getTotalCells(gridSize ?? AppConstants.defaultGridSize);
 
+    print('🚀 About to encrypt with totalCells=$totalCells');
+
     // Encrypt input text to pattern
     final encryptedData = _encryptionStrategy.encrypt(inputText, totalCells);
+
+    print('🚀 Encryption complete! Pattern length=${encryptedData.length}, first_10=${encryptedData.take(10).join(',')}');
     return encryptedData;
   }
 
