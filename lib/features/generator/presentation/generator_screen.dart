@@ -815,9 +815,118 @@ class GeneratorScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
+            // Grid Size Configuration
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.grid_4x4, color: Colors.blue.shade700),
+                        const SizedBox(width: 12),
+                        Text(
+                          "Grid Size Configuration",
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.grid_on, color: Colors.blue.shade700),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "${state.selectedGridConfig.size}×${state.selectedGridConfig.size} Grid",
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                Text(
+                                  state.selectedGridConfig.description,
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<GridConfig>(
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      // ignore: avoid_redundant_argument_values, deprecated_member_use
+                      value: state.selectedGridConfig,
+                      isExpanded: true,
+                      items: GridConfig.presets.map((config) {
+                        return DropdownMenuItem<GridConfig>(
+                          value: config,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.grid_4x4,
+                                size: 18,
+                                color: Colors.blue.shade700,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  "${config.size}×${config.size} - ${config.displayName}",
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  "${config.size}",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (GridConfig? newValue) {
+                        if (newValue != null) {
+                          notifier.updateGridConfig(newValue);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             // Algorithm Selection
             Card(
               child: Padding(
