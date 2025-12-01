@@ -1,5 +1,4 @@
-// Import legacy StateNotifierProvider for Riverpod 3.x compatibility
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/history_service.dart';
 
 class HistoryState {
