@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import '../../encryption/domain/encryption_strategy.dart';
 import '../../encryption/data/chaos_strategy.dart';
@@ -224,3 +225,16 @@ class GeneratorUseCase {
   }
 
   }
+
+// Riverpod providers for dependency injection
+final pdfServiceProvider = Provider<PDFService>((ref) {
+  return PDFService.create();
+});
+
+final historyServiceProvider = Provider<HistoryService>((ref) {
+  return HistoryService.create();
+});
+
+final generatorUseCaseProvider = Provider<GeneratorUseCase>((ref) {
+  return GeneratorUseCase();
+});

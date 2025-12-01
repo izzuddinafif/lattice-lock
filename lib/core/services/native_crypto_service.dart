@@ -119,16 +119,18 @@ class NativeCryptoService {
   static Future<String> decrypt(EncryptedData encryptedData) async {
     try {
       final keyString = await SecureStorageService.getEncryptionKey(encryptedData.keyId);
-      
+
       if (keyString == null) {
         throw NativeCryptoException('No encryption key found for keyId: ${encryptedData.keyId}');
       }
 
       final keyBytes = base64Url.decode(keyString);
       final keyDigest = sha256.convert(keyBytes);
-      
-      final decryptedBytes = _xorDecrypt(encryptedData.encryptedBytes.toList(), Uint8List.fromList(keyDigest.bytes));
-      
+
+      // Convert NativeUint8List to regular List<int> safely
+      final ciphertextList = List<int>.from(encryptedData.encryptedBytes);
+      final decryptedBytes = _xorDecrypt(ciphertextList, Uint8List.fromList(keyDigest.bytes));
+
       return utf8.decode(decryptedBytes);
     } catch (e) {
       throw NativeCryptoException('Failed to decrypt data: $e');
@@ -139,15 +141,17 @@ class NativeCryptoService {
   static Future<Uint8List> decryptToBytes(EncryptedData encryptedData) async {
     try {
       final keyString = await SecureStorageService.getEncryptionKey(encryptedData.keyId);
-      
+
       if (keyString == null) {
         throw NativeCryptoException('No encryption key found for keyId: ${encryptedData.keyId}');
       }
 
       final keyBytes = base64Url.decode(keyString);
       final keyDigest = sha256.convert(keyBytes);
-      
-      final decryptedBytes = _xorDecrypt(encryptedData.encryptedBytes.toList(), Uint8List.fromList(keyDigest.bytes));
+
+      // Convert NativeUint8List to regular List<int> safely
+      final ciphertextList = List<int>.from(encryptedData.encryptedBytes);
+      final decryptedBytes = _xorDecrypt(ciphertextList, Uint8List.fromList(keyDigest.bytes));
       return Uint8List.fromList(decryptedBytes);
     } catch (e) {
       throw NativeCryptoException('Failed to decrypt to bytes: $e');

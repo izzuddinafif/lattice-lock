@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:math' as math;
 import '../logic/generator_state.dart';
 import '../../../core/models/grid_config.dart';
@@ -352,50 +353,16 @@ class GeneratorScreen extends ConsumerWidget {
                             children: [
                               Icon(
                                 _getGridSizeIcon(config.useCase),
-                                size: 20,
+                                size: 14,
                                 color: _getGridSizeColor(config.useCase),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 6),
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      config.displayName,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 1),
-                                    Text(
-                                      config.description,
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        color: Colors.grey[600],
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: _getGridSizeColor(config.useCase).withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: _getGridSizeColor(config.useCase)),
-                                ),
                                 child: Text(
-                                  config.useCase,
-                                  style: TextStyle(
-                                    fontSize: 8,
-                                    color: _getGridSizeColor(config.useCase),
+                                  '${config.displayName} (${config.useCase})',
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.w600,
+                                    fontSize: 12,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -772,7 +739,7 @@ class GeneratorScreen extends ConsumerWidget {
                             spacing: 12,
                             runSpacing: 8,
                             children: state.selectedMaterial.inks.asMap().entries.map((entry) {
-                              final index = entry.key;
+                              // final index = entry.key; // Unused but kept for potential future use
                               final ink = entry.value;
                               return Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -1003,8 +970,8 @@ class GeneratorScreen extends ConsumerWidget {
                                       ),
                                     ),
                                     child: Center(
-                                      child: finalCellSize < 30.0
-                                          ? const SizedBox() // Hide text for small cells
+                                      child: _shouldHideText(gridSize, finalCellSize, screenWidth)
+                                          ? const SizedBox() // Hide text for small cells or large grids
                                           : FittedBox(
                                               fit: BoxFit.scaleDown,
                                               alignment: Alignment.center,
@@ -1240,5 +1207,27 @@ class GeneratorScreen extends ConsumerWidget {
       default:
         return Colors.blue;
     }
+  }
+
+  /// Determines whether text should be hidden in grid cells
+  ///
+  /// Text is hidden when:
+  /// 1. Cell size is less than 30px (for readability on all platforms)
+  /// 2. Grid size is 24x24 or larger on web/desktop (to reduce visual clutter)
+  bool _shouldHideText(int gridSize, double cellSize, double screenWidth) {
+    // Always hide text for very small cells (existing behavior)
+    if (cellSize < 30.0) {
+      return true;
+    }
+
+    // Hide text for large grids (24x24 and above) on web/desktop
+    // Mobile keeps text to maintain usability even on larger grids
+    final isWebOrDesktop = kIsWeb || screenWidth >= 600;
+
+    if (isWebOrDesktop && gridSize >= 24) {
+      return true;
+    }
+
+    return false;
   }
 }

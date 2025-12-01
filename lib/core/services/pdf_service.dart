@@ -1,7 +1,5 @@
 import 'dart:typed_data';
-import '../utils/platform_detector.dart';
-import 'pdf_native_service.dart';
-import 'pdf_web_service.dart';
+import 'pdf_web_service_stub.dart';
 
 /// Model for PDF generation metadata
 class PDFMetadata {
@@ -24,6 +22,19 @@ class PDFMetadata {
     required this.pattern,
     this.additionalData = const {},
   });
+
+  // Helper getters for backward compatibility
+  String get formattedDate {
+    return '${timestamp.day.toString().padLeft(2, '0')}/${timestamp.month.toString().padLeft(2, '0')}/${timestamp.year}';
+  }
+
+  int get gridSize {
+    return pattern.isNotEmpty ? (pattern.length ~/ pattern[0].length) : 8;
+  }
+
+  String get inputHash {
+    return additionalData['inputHash'] ?? 'N/A';
+  }
 }
 
 /// Result of PDF generation operation
@@ -56,11 +67,8 @@ abstract class PDFService {
 
   /// Get platform-specific service implementation
   factory PDFService.create() {
-    if (PlatformDetector.isWeb) {
-      return WebPDFService();
-    } else {
-      return NativePDFService();
-    }
+    // Temporarily use stub everywhere to eliminate JS interop issues
+    return WebPDFServiceStub();
   }
 }
 

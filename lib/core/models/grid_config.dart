@@ -139,4 +139,13 @@ class GridConfig {
 
   @override
   int get hashCode => size.hashCode;
+
+  /// Find a grid configuration by size
+  static GridConfig? findBySize(int size) {
+    try {
+      return presets.firstWhere((config) => config.size == size);
+    } catch (e) {
+      return null;
+    }
+  }
 }
