@@ -3,7 +3,7 @@ services:
   pdf-backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: Dockerfile.backend
     container_name: latticelock-pdf-backend
     ports:
       - "8000:8000"
