@@ -25,6 +25,7 @@ class TestDataFactory {
     String? materialProfile,
     DateTime? timestamp,
     List<List<int>>? pattern,
+    int? gridSize,
     Map<String, dynamic>? additionalData,
   }) {
     return PDFMetadata(
@@ -35,6 +36,7 @@ class TestDataFactory {
       materialProfile: materialProfile ?? 'UV Ink',
       timestamp: timestamp ?? DateTime.now(),
       pattern: pattern ?? createTestPattern(),
+      gridSize: gridSize ?? 8,
       additionalData: additionalData ?? {'test': true},
     );
   }

@@ -1,10 +1,11 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'history_service.dart';
 
-/// Hive-based storage implementation for native platforms (mobile/desktop)
+/// Hive-based storage implementation for both web and native platforms
+/// Uses IndexedDB on web, local file storage on mobile/desktop
 class HiveStorageService implements HistoryService {
   static const String _boxName = 'pattern_history';
   static const String _entriesKey = 'history_entries';
@@ -27,7 +28,17 @@ class HiveStorageService implements HistoryService {
 
       final jsonList = entries.map((e) => e.toJson()).toList();
       await _box.put(_entriesKey, jsonList);
+
+      if (kDebugMode) {
+        print('💾 [HIVE STORAGE] Saved entry: ${entry.batchCode} (total: ${entries.length} entries)');
+        if (kIsWeb) {
+          print('💾 [HIVE STORAGE] Data persisted to IndexedDB');
+        }
+      }
     } catch (e) {
+      if (kDebugMode) {
+        print('❌ [HIVE STORAGE] Failed to save entry: $e');
+      }
       throw HistoryServiceException('Failed to save entry: ${e.toString()}');
     }
   }
@@ -37,11 +48,20 @@ class HiveStorageService implements HistoryService {
     await _ensureInitialized();
     try {
       final jsonList = _box.get(_entriesKey, defaultValue: <dynamic>[]);
-      return (jsonList as List)
+      final entries = (jsonList as List)
           .map((json) => PatternHistoryEntry.fromJson(Map<String, dynamic>.from(json)))
           .toList()
         ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+      if (kDebugMode) {
+        print('📖 [HIVE STORAGE] Loaded ${entries.length} entries from ${kIsWeb ? "IndexedDB" : "Hive box"}');
+      }
+
+      return entries;
     } catch (e) {
+      if (kDebugMode) {
+        print('❌ [HIVE STORAGE] Failed to load entries: $e');
+      }
       throw HistoryServiceException('Failed to load entries: ${e.toString()}');
     }
   }
@@ -124,26 +144,33 @@ class HiveStorageService implements HistoryService {
   Future<void> _ensureInitialized() async {
     if (_isInitialized) return;
 
-    if (kIsWeb) {
-      throw HistoryServiceException('Hive storage service cannot be used on web platform');
-    }
-
     try {
-      // Initialize Hive for native platforms
-      if (!kIsWeb) {
-        // Hive initialization is handled automatically by hive_flutter
-        await Hive.initFlutter();
+      if (kDebugMode) {
+        print('💾 [HIVE STORAGE] Initializing on ${kIsWeb ? "WEB" : "NATIVE"} platform');
       }
 
-      // Get application documents directory
-      final appDir = await getApplicationDocumentsDirectory();
-      final historyDir = '${appDir.path}/latticelock_history';
-      await Directory(historyDir).create(recursive: true);
+      // Hive initialization is already handled in main.dart for both platforms
+      // Hive.initFlutter() supports IndexedDB on web
 
-      // Open Hive box
-      _box = await Hive.openBox(_boxName, path: historyDir);
+      if (kIsWeb) {
+        // On web, Hive stores data in browser's IndexedDB automatically
+        _box = await Hive.openBox(_boxName);
+      } else {
+        // On native platforms, use custom directory for better organization
+        final appDir = await getApplicationDocumentsDirectory();
+        final historyDir = '${appDir.path}/latticelock_history';
+        await Directory(historyDir).create(recursive: true);
+        _box = await Hive.openBox(_boxName, path: historyDir);
+      }
+
       _isInitialized = true;
+      if (kDebugMode) {
+        print('✅ [HIVE STORAGE] Initialized successfully');
+      }
     } catch (e) {
+      if (kDebugMode) {
+        print('❌ [HIVE STORAGE] Initialization failed: $e');
+      }
       throw HistoryServiceException('Failed to initialize Hive storage: ${e.toString()}');
     }
   }

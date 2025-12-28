@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import '../domain/encryption_strategy.dart';
 import 'dart:convert';
 import 'dart:math' as math;

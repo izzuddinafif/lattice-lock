@@ -24,6 +24,7 @@ void main() {
           materialProfile: 'UV Ink',
           timestamp: DateTime.now(),
           pattern: testPattern,
+          gridSize: 8,
         );
 
         expect(metadata.filename, equals('test.pdf'));
@@ -45,6 +46,7 @@ void main() {
           materialProfile: 'UV Ink',
           timestamp: DateTime.now(),
           pattern: testPattern,
+          gridSize: 8,
           additionalData: additionalData,
         );
 
@@ -130,6 +132,7 @@ void main() {
           materialProfile: 'UV Ink',
           timestamp: DateTime.now(),
           pattern: [],
+          gridSize: 8,
         );
 
         expect(metadata.pattern, isEmpty);
@@ -149,6 +152,7 @@ void main() {
           materialProfile: 'UV Ink',
           timestamp: DateTime.now(),
           pattern: largePattern,
+          gridSize: 1000,
         );
 
         expect(metadata.pattern.length, equals(1000));
@@ -166,6 +170,7 @@ void main() {
           materialProfile: 'UV Ink',
           timestamp: DateTime.now(),
           pattern: testPattern,
+          gridSize: 8,
         );
 
         expect(metadata.filename, contains(specialChars));
@@ -180,6 +185,7 @@ void main() {
           materialProfile: 'UV Ink',
           timestamp: DateTime.now(),
           pattern: testPattern,
+          gridSize: 8,
         );
 
         expect(metadata.filename, contains('测试'));
@@ -204,6 +210,7 @@ void main() {
           materialProfile: 'UV Ink',
           timestamp: DateTime.now(),
           pattern: testPattern,
+          gridSize: 8,
           additionalData: largeAdditionalData,
         );
 

@@ -56,6 +56,7 @@ void main() {
         algorithm: 'chaos_logistic',
         materialProfile: material.name,
         timestamp: DateTime.now(),
+        gridSize: 4,
       );
 
       final pdfResult = PDFResult(
@@ -120,6 +121,7 @@ void main() {
         algorithm: 'chaos_tent',
         materialProfile: material.name,
         timestamp: DateTime.now(),
+        gridSize: 2,
       );
 
       when(mockPDFService.generatePDF(testMetadata))
@@ -179,6 +181,7 @@ void main() {
         algorithm: 'chaos_arnolds_cat',
         materialProfile: material.name,
         timestamp: DateTime.now(),
+        gridSize: 2,
       );
 
       final pdfResult = PDFResult(
