@@ -2,8 +2,8 @@ services:
   # FastAPI PDF Generation Backend (Primary Service)
   pdf-backend:
     build:
-      context: backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: latticelock-pdf-backend
     ports:
       - "8000:8000"
