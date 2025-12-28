@@ -16,9 +16,6 @@ android/
 ios/
 *.ipa
 
-# Web (since we build it in Docker)
-web/
-
 # IDE
 .vscode/
 .idea/
