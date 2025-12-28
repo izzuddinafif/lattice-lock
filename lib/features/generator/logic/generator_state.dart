@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import '../domain/generator_use_case.dart';
 import '../../material/models/ink_profile.dart';
+import '../../material/models/custom_ink_profile.dart';
+import '../../material/providers/material_profile_provider.dart';
 import '../../../core/models/grid_config.dart';
 
 class GeneratorState {
@@ -45,12 +47,13 @@ class GeneratorState {
 }
 
 class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
-  late final GeneratorUseCase _generatorUseCase;
+  GeneratorUseCase? _generatorUseCase;
   Timer? _debounceTimer;
 
   @override
   GeneratorState build() {
-    _generatorUseCase = GeneratorUseCase();
+    // Initialize use case only once
+    _generatorUseCase ??= GeneratorUseCase();
 
     // Set up cleanup for timer when notifier is disposed
     ref.onDispose(() {
@@ -63,10 +66,22 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
       orElse: () => GridConfig.presets.first, // Fallback to 2x2 if 8x8 not found
     );
 
+    // Watch material profile provider for active profile
+    final materialProfileState = ref.watch(materialProfileProvider);
+    MaterialProfile selectedMaterial;
+
+    if (materialProfileState.activeProfile != null) {
+      // Convert custom profile to standard MaterialProfile
+      selectedMaterial = materialProfileState.activeProfile!.toMaterialProfile();
+    } else {
+      // Fallback to standard set if no custom profile is active
+      selectedMaterial = MaterialProfile.standardSet;
+    }
+
     return GeneratorState(
       inputText: '',
       selectedAlgorithm: 'chaos_logistic',
-      selectedMaterial: MaterialProfile.standardSet,
+      selectedMaterial: selectedMaterial,
       selectedGridConfig: defaultGridConfig, // Use configurable grid instead of hardcoded
       encryptedPattern: [],
       isGenerating: false,
@@ -109,7 +124,7 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
     state = AsyncValue.data(currentState.copyWith(isGenerating: true, error: null));
 
     try {
-      final pattern = await _generatorUseCase.generatePattern(
+      final pattern = await _generatorUseCase!.generatePattern(
         inputText: currentState.inputText,
         algorithm: currentState.selectedAlgorithm,
         gridSize: currentState.selectedGridConfig.size, // Pass configurable grid size
@@ -140,7 +155,7 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
     state = AsyncValue.data(currentState.copyWith(isGenerating: true));
 
     try {
-      await _generatorUseCase.generatePDF(
+      await _generatorUseCase!.generatePDF(
         pattern: currentState.encryptedPattern,
         material: currentState.selectedMaterial,
         inputText: currentState.inputText,

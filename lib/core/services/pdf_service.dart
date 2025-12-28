@@ -1,7 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'pdf_web_service.dart';
-import 'pdf_web_service_stub.dart';
-import 'pdf_native_service.dart';
+import 'fastapi_pdf_service.dart';
 
 /// Model for PDF generation metadata
 class PDFMetadata {
@@ -12,6 +10,7 @@ class PDFMetadata {
   final String materialProfile;
   final DateTime timestamp;
   final List<List<int>> pattern;
+  final int gridSize; // Explicit grid size for backend
   final Map<String, dynamic> additionalData;
 
   PDFMetadata({
@@ -22,16 +21,13 @@ class PDFMetadata {
     required this.materialProfile,
     required this.timestamp,
     required this.pattern,
+    required this.gridSize,
     this.additionalData = const {},
   });
 
   // Helper getters for backward compatibility
   String get formattedDate {
     return '${timestamp.day.toString().padLeft(2, '0')}/${timestamp.month.toString().padLeft(2, '0')}/${timestamp.year}';
-  }
-
-  int get gridSize {
-    return pattern.isNotEmpty ? (pattern.length ~/ pattern[0].length) : 8;
   }
 
   String get inputHash {
@@ -69,17 +65,8 @@ abstract class PDFService {
 
   /// Get platform-specific service implementation
   factory PDFService.create() {
-    // Use stub only in debug/test mode to avoid JS interop issues
-    if (kDebugMode) {
-      return WebPDFServiceStub();
-    }
-
-    // Use proper platform-specific services in production
-    if (kIsWeb) {
-      return WebPDFService();
-    } else {
-      return NativePDFService();
-    }
+    // Use FastAPI service for all platforms now that we have a Python backend
+    return FastApiPDFService();
   }
 }
 

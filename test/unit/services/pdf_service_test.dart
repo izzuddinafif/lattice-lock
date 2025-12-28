@@ -1,8 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latticelock/core/services/pdf_service.dart';
-import 'package:latticelock/core/services/pdf_native_service.dart';
-import 'package:latticelock/core/services/pdf_web_service.dart';
+import 'package:latticelock/core/services/fastapi_pdf_service.dart';
 import '../../helpers/test_helpers.dart';
 
 void main() {
@@ -115,27 +114,9 @@ void main() {
     });
 
     group('Factory', () {
-      test('should create WebPDFService for web platform', () {
-        // This test would need to mock PlatformDetector or run in a web context
-        // For now, we'll test the factory pattern by checking type
-        try {
-          final service = PDFService.create();
-          // In actual tests, we'd mock PlatformDetector.isWeb
-          expect(service, isA<WebPDFService>());
-        } catch (e) {
-          // This might fail in non-web context, which is expected
-          expect(true, isTrue); // Test passes if we can at least call the factory
-        }
-      });
-
-      test('should create NativePDFService for non-web platform', () {
-        try {
-          final service = PDFService.create();
-          // In actual tests, we'd mock PlatformDetector.isWeb to return false
-          expect(service, isA<NativePDFService>());
-        } catch (e) {
-          expect(true, isTrue);
-        }
+      test('should create FastApiPDFService', () {
+        final service = PDFService.create();
+        expect(service, isA<FastApiPDFService>());
       });
     });
 

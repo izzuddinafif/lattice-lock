@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'features/generator/presentation/generator_screen.dart';
 import 'features/generator/presentation/history_screen.dart';
+import 'features/material/presentation/profile_list_screen.dart';
+import 'features/material/models/custom_ink_profile.dart';
 import 'core/services/crypto_integration_test.dart';
 import 'core/services/native_crypto_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Initialize Hive
+  await Hive.initFlutter();
+  Hive.registerAdapter(CustomInkDefinitionAdapter());
+  Hive.registerAdapter(CustomMaterialProfileAdapter());
+
   // Initialize crypto services
   if (kDebugMode) {
     try {
       await NativeCryptoService.initialize();
-      
+
       // Run integration tests in debug mode
       final testResults = await CryptoIntegrationTest.runAllTests();
       CryptoIntegrationTest.printTestResults(testResults);
@@ -21,7 +29,7 @@ void main() async {
       debugPrint('Failed to initialize crypto services: $e');
     }
   }
-  
+
   runApp(
     const ProviderScope(
       child: LatticeLockApp(),
@@ -69,6 +77,7 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _screens = [
     const GeneratorScreen(),
     const HistoryScreen(),
+    const ProfileListScreen(),
   ];
 
   @override
@@ -96,6 +105,10 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Icon(Icons.history),
             label: 'History',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.palette),
+            label: 'Materials',
           ),
         ],
       ),

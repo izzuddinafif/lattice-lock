@@ -5,33 +5,102 @@ import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'dart:math' as math;
 import '../logic/generator_state.dart';
 import '../../../core/models/grid_config.dart';
+import '../../material/providers/material_profile_provider.dart';
+import '../../material/models/custom_ink_profile.dart';
 
-class GeneratorScreen extends ConsumerWidget {
+class GeneratorScreen extends ConsumerStatefulWidget {
   const GeneratorScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final generatorAsync = ref.watch(generatorProvider);
-    final notifier = ref.read(generatorProvider.notifier);
+  ConsumerState<GeneratorScreen> createState() => _GeneratorScreenState();
+}
 
-    return generatorAsync.when(
-      data: (state) => _buildResponsiveLayout(context, state, notifier),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text('Error: $error', style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => notifier.updateInputText(''),
-              child: const Text('Reset'),
+class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
+  final TextEditingController _inputController = TextEditingController();
+  final TextEditingController _keyController = TextEditingController();
+  
+  // Grid controllers
+  late int _gridSize;
+  late List<List<int>> _currentPattern;
+  late List<String> _selectedInks;
+  
+  // PDF generation controllers
+  late ScrollController _leftScrollController;
+  late ScrollController _rightScrollController;
+  
+  // State variables
+  String _selectedAlgorithm = 'chaos_logistic';
+  String? _selectedProfileId;
+  bool _isGenerating = false;
+  String _statusMessage = 'Ready to generate secure pattern';
+  bool _showAdvancedSettings = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeGrid();
+    
+    // Initialize scroll controllers
+    _leftScrollController = ScrollController();
+    _rightScrollController = ScrollController();
+    
+    // Load saved data if available
+    _loadSavedData();
+  }
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    _keyController.dispose();
+    _leftScrollController.dispose();
+    _rightScrollController.dispose();
+    super.dispose();
+  }
+
+  void _initializeGrid() {
+    final defaultConfig = GridConfig.presets.first;
+    _gridSize = defaultConfig.size;
+    _currentPattern = List.generate(
+      _gridSize,
+      (i) => List.generate(_gridSize, (j) => 0),
+    );
+    _selectedInks = ['Black', 'Blue', 'Red', 'Green', 'Yellow'];
+  }
+
+  void _loadSavedData() {
+    // In a real app, you'd load saved data from secure storage here
+    // For now, we'll use defaults
+    _inputController.text = '';
+    _keyController.text = '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final generatorAsync = ref.watch(generatorProvider);
+        final notifier = ref.read(generatorProvider.notifier);
+
+        return generatorAsync.when(
+          data: (state) => _buildResponsiveLayout(context, state, notifier),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text('Error: $error', style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => notifier.updateInputText(''),
+                  child: const Text('Reset'),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -72,21 +141,34 @@ class GeneratorScreen extends ConsumerWidget {
           // PANEL KIRI: INPUT & KONTROL
           Expanded(
             flex: 1,
-            child: Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(2, 0),
+            child: Scrollbar(
+              controller: _leftScrollController,
+              thumbVisibility: true,
+              thickness: 12.0,
+              radius: const Radius.circular(6),
+              interactive: true,
+              child: SingleChildScrollView(
+                controller: _leftScrollController,
+                padding: const EdgeInsets.all(24),
+                child: Container(
+                  constraints: const BoxConstraints(
+                    minWidth: 400,
+                    maxWidth: 600,
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(2, 0),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                   // Header Section
                   Row(
                     children: [
@@ -156,9 +238,9 @@ class GeneratorScreen extends ConsumerWidget {
                     onChanged: (val) => notifier.updateInputText(val),
                   ),
                   
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 48), // Increased from 24
                   
-                  // Material Configuration
+                  // Action Buttons
                   _buildSectionCard(
                     title: "Material Profile",
                     icon: Icons.science,
@@ -166,35 +248,92 @@ class GeneratorScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.layers, color: Colors.blue.shade700),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      state.selectedMaterial.name,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                    ),
-                                    Text(
-                                      "${state.selectedMaterial.inks.length} ink types configured",
-                                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                    ),
-                                  ],
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final materialState = ref.watch(materialProfileProvider);
+                            final profiles = materialState.profiles;
+                            final activeProfile = materialState.activeProfile;
+
+                            // Initialize selected profile ID if not set
+                            if (_selectedProfileId == null && activeProfile != null) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                setState(() {
+                                  _selectedProfileId = activeProfile.id;
+                                });
+                              });
+                            }
+
+                            if (profiles.isEmpty) {
+                              return Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey.shade300),
                                 ),
+                                child: const Text('No profiles available. Please create a profile in the Materials tab.'),
+                              );
+                            }
+
+                            return DropdownButtonFormField<String>(
+                              decoration: InputDecoration(
+                                labelText: 'Select Material Profile',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                prefixIcon: Icon(Icons.layers, color: Colors.blue.shade700),
                               ),
-                            ],
-                          ),
+                              value: _selectedProfileId ?? activeProfile?.id,
+                              isExpanded: true,
+                              items: profiles.map((profile) {
+                                return DropdownMenuItem<String>(
+                                  value: profile.id,
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 20,
+                                        height: 20,
+                                        decoration: BoxDecoration(
+                                          color: profile.isActive ? Colors.green : Colors.grey,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Icon(
+                                          profile.isActive ? Icons.check : Icons.help_outline,
+                                          color: Colors.white,
+                                          size: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          profile.name,
+                                          style: const TextStyle(fontSize: 14),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      Text(
+                                        "${profile.inks.length} inks",
+                                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (profileId) {
+                                if (profileId != null) {
+                                  setState(() {
+                                    _selectedProfileId = profileId;
+                                  });
+
+                                  // Set the selected profile as active
+                                  ref.read(materialProfileProvider.notifier).setActiveProfile(profileId);
+                                }
+                              },
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -289,7 +428,7 @@ class GeneratorScreen extends ConsumerWidget {
                     ),
                   ),
                   
-                  const Spacer(),
+                  const SizedBox(height: 40),
                   
                   // Status Indicator
                   Container(
@@ -356,16 +495,22 @@ class GeneratorScreen extends ConsumerWidget {
                                 size: 14,
                                 color: _getGridSizeColor(config.useCase),
                               ),
-                              const SizedBox(width: 6),
-                              Expanded(
+                              const SizedBox(width: 12),
+                              const Expanded(child: Text("Grid Size")),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.blue),
+                                ),
                                 child: Text(
-                                  '${config.displayName} (${config.useCase})',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
+                                  "${config.size}×${config.size}",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade700,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -447,6 +592,8 @@ class GeneratorScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -471,12 +618,33 @@ class GeneratorScreen extends ConsumerWidget {
           // PANEL KANAN: PREVIEW GRID
           Expanded(
             flex: 2,
-            child: Container(
-              padding: const EdgeInsets.all(32),
-              color: Colors.blueGrey[900],
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+            child: Scrollbar(
+              controller: _rightScrollController,
+              thumbVisibility: true,
+              thickness: 12.0,
+              radius: const Radius.circular(6),
+              interactive: true,
+              child: SingleChildScrollView(
+                controller: _rightScrollController,
+                padding: const EdgeInsets.all(32),
+                child: Container(
+                  constraints: const BoxConstraints(
+                    minWidth: 400,
+                    maxWidth: 800,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey[900],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(-2, 0),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                   // Preview Header
                   Container(
                     padding: const EdgeInsets.all(20),
@@ -545,8 +713,10 @@ class GeneratorScreen extends ConsumerWidget {
                             ? state.selectedGridConfig.totalCells
                             : state.encryptedPattern.length,
                         itemBuilder: (context, index) {
-                          final inkId = state.encryptedPattern.isEmpty ? 4 : state.encryptedPattern[index];
-                          final ink = state.selectedMaterial.inks[inkId];
+                          final inkId = state.encryptedPattern.isEmpty
+                              ? state.selectedMaterial.inks.length - 1
+                              : state.encryptedPattern[index];
+                          final ink = state.selectedMaterial.inks[inkId.clamp(0, state.selectedMaterial.inks.length - 1)];
                           final shouldShowText = _shouldShowGridText(state.selectedGridConfig.size);
 
                           return Tooltip(
@@ -647,7 +817,9 @@ class GeneratorScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            ),  // Close Expanded (right panel)
+          ),  // Close SingleChildScrollView
+        ),    // Close Scrollbar
+      ),    // Close Expanded (right panel)
         ],  // Close Row children
       ),  // Close Row
     );  // Close Scaffold
@@ -719,35 +891,94 @@ class GeneratorScreen extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.layers, color: Colors.blue.shade700),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  state.selectedMaterial.name,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                ),
-                                Text(
-                                  "${state.selectedMaterial.inks.length} ink types configured",
-                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                ),
-                              ],
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final materialState = ref.watch(materialProfileProvider);
+                        final profiles = materialState.profiles;
+                        final activeProfile = materialState.activeProfile;
+
+                        // Initialize selected profile ID if not set
+                        if (_selectedProfileId == null && activeProfile != null) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              setState(() {
+                                _selectedProfileId = activeProfile.id;
+                              });
+                            }
+                          });
+                        }
+
+                        if (profiles.isEmpty) {
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
                             ),
+                            child: const Text('No profiles available. Please create a profile in the Materials tab.'),
+                          );
+                        }
+
+                        return DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Select Material Profile',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            prefixIcon: Icon(Icons.layers, color: Colors.blue.shade700),
                           ),
-                        ],
-                      ),
+                          value: _selectedProfileId ?? activeProfile?.id,
+                          isExpanded: true,
+                          items: profiles.map((profile) {
+                            return DropdownMenuItem<String>(
+                              value: profile.id,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: profile.isActive ? Colors.green : Colors.grey,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Icon(
+                                      profile.isActive ? Icons.check : Icons.help_outline,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      profile.name,
+                                      style: const TextStyle(fontSize: 14),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Text(
+                                    "${profile.inks.length} inks",
+                                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (profileId) {
+                            if (profileId != null) {
+                              setState(() {
+                                _selectedProfileId = profileId;
+                              });
+
+                              // Set the selected profile as active
+                              ref.read(materialProfileProvider.notifier).setActiveProfile(profileId);
+                            }
+                          },
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     // Ink Color Legend
@@ -924,7 +1155,7 @@ class GeneratorScreen extends ConsumerWidget {
                 ),
               ),
             ),
-
+            
             const SizedBox(height: 16),
 
             // Algorithm Selection
@@ -1108,8 +1339,10 @@ class GeneratorScreen extends ConsumerWidget {
                                   ? state.selectedGridConfig.totalCells 
                                   : state.encryptedPattern.length,
                               itemBuilder: (context, index) {
-                                final inkId = state.encryptedPattern.isEmpty ? 4 : state.encryptedPattern[index];
-                                final ink = state.selectedMaterial.inks[inkId];
+                                final inkId = state.encryptedPattern.isEmpty
+                                    ? state.selectedMaterial.inks.length - 1
+                                    : state.encryptedPattern[index];
+                                final ink = state.selectedMaterial.inks[inkId.clamp(0, state.selectedMaterial.inks.length - 1)];
 
                                 return Tooltip(
                                   message: "${ink.name} (ID: $inkId)",

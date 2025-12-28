@@ -119,26 +119,20 @@ class GeneratorUseCase {
   }
 
   void setAlgorithm(String algorithm) {
-    print('🎯 ALGORITHM SELECTION: Setting algorithm to "$algorithm"');
     switch (algorithm) {
       case 'chaos_logistic':
-        print('🎯 ALGORITHM SELECTED: Chaos Logistic Strategy');
         _encryptionStrategy = ChaosLogisticStrategy();
         break;
       case 'chaos_tent':
-        print('🎯 ALGORITHM SELECTED: Tent Map Strategy');
         _encryptionStrategy = TentMapStrategy();
         break;
       case 'chaos_arnolds_cat':
-        print('🎯 ALGORITHM SELECTED: Arnold\'s Cat Map Strategy');
         _encryptionStrategy = ArnoldsCatMapStrategy();
         break;
       default:
-        print('🎯 ALGORITHM DEFAULT: Using Chaos Logistic Strategy (unknown: $algorithm)');
         _encryptionStrategy = ChaosLogisticStrategy();
         break;
     }
-    print('🎯 ALGORITHM TYPE: ${_encryptionStrategy.runtimeType}');
   }
 
   Future<List<int>> generatePattern({
@@ -146,20 +140,15 @@ class GeneratorUseCase {
     required String algorithm,
     int? gridSize, // Optional grid size parameter
   }) async {
-    print('🚀 generatePattern() called with inputText="$inputText", algorithm="$algorithm", gridSize=$gridSize');
-
     // Set algorithm based on selection
     setAlgorithm(algorithm);
 
     // Calculate total cells based on grid size (default to 8x8 for backward compatibility)
     final totalCells = AppConstants.getTotalCells(gridSize ?? AppConstants.defaultGridSize);
 
-    print('🚀 About to encrypt with totalCells=$totalCells');
-
     // Encrypt input text to pattern
     final encryptedData = _encryptionStrategy.encrypt(inputText, totalCells);
 
-    print('🚀 Encryption complete! Pattern length=${encryptedData.length}, first_10=${encryptedData.take(10).join(',')}');
     return encryptedData;
   }
 
@@ -171,7 +160,8 @@ class GeneratorUseCase {
   }) async {
     try {
       final pdfService = PDFService.create();
-      final historyService = HistoryService.create();
+      // Use the SAME global HistoryService instance that the history provider uses
+      final historyService = globalHistoryService;
 
       // Use provided grid size or default to 8x8 for backward compatibility
       final actualGridSize = gridSize ?? AppConstants.defaultGridSize;
@@ -192,11 +182,11 @@ class GeneratorUseCase {
         materialProfile: material.name,
         timestamp: DateTime.now(),
         pattern: pattern2D,
+        gridSize: actualGridSize, // Explicitly pass grid size
         additionalData: {
           'inputText': inputText,
           'materialName': material.name,
           'patternLength': pattern.length,
-          'gridSize': actualGridSize,
           'totalCells': actualGridSize * actualGridSize,
         },
       );
@@ -204,21 +194,28 @@ class GeneratorUseCase {
       // Generate PDF
       final pdfResult = await pdfService.generatePDF(metadata);
 
+      // Save to history (even if PDF generation fails, the pattern was created)
+      final historyEntry = PatternHistoryEntry(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        batchCode: metadata.batchCode,
+        algorithm: metadata.algorithm,
+        materialProfile: metadata.materialProfile,
+        pattern: pattern2D,
+        timestamp: metadata.timestamp,
+        pdfPath: metadata.filename,
+        metadata: {
+          ...metadata.additionalData,
+          'pdfGenerationSuccess': pdfResult.success,
+          'pdfError': pdfResult.error,
+        },
+      );
+
+      if (kDebugMode) {
+        print('💾 [GENERATOR] Saving to historyService (instance: ${identityHashCode(historyService)})');
+      }
+      await historyService.saveEntry(historyEntry);
+
       if (pdfResult.success) {
-        // Save to history
-        final historyEntry = PatternHistoryEntry(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          batchCode: metadata.batchCode,
-          algorithm: metadata.algorithm,
-          materialProfile: metadata.materialProfile,
-          pattern: pattern2D,
-          timestamp: metadata.timestamp,
-          pdfPath: metadata.filename,
-          metadata: metadata.additionalData,
-        );
-
-        await historyService.saveEntry(historyEntry);
-
         // Download or share PDF based on platform
         await pdfService.downloadOrSharePDF(pdfResult);
 
@@ -226,7 +223,11 @@ class GeneratorUseCase {
           print('PDF generated and saved successfully: ${metadata.filename}');
         }
       } else {
-        throw Exception('PDF generation failed: ${pdfResult.error}');
+        if (kDebugMode) {
+          print('PDF generation failed but pattern saved to history: ${pdfResult.error}');
+        }
+        // Don't throw exception - pattern was still generated and saved
+        print('Warning: PDF generation failed: ${pdfResult.error}');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -243,8 +244,12 @@ final pdfServiceProvider = Provider<PDFService>((ref) {
   return PDFService.create();
 });
 
+// Global shared HistoryService instance for entire app
+// This ensures the SAME instance is used by both generator and history screen
+final HistoryService globalHistoryService = HistoryService.create();
+
 final historyServiceProvider = Provider<HistoryService>((ref) {
-  return HistoryService.create();
+  return globalHistoryService;
 });
 
 final generatorUseCaseProvider = Provider<GeneratorUseCase>((ref) {

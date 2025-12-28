@@ -9,8 +9,6 @@ class ChaosLogisticStrategy implements EncryptionStrategy {
 
   @override
   List<int> encrypt(String input, int length) {
-    print('🌟️ LOGISTIC encrypt() called with input="$input", length=$length');
-
     // 1. Generate MAXIMUM entropy seed from input
     final bytes = utf8.encode(input);
     double x = 0.6123456789; // Golden ratio conjugate
@@ -35,8 +33,6 @@ class ChaosLogisticStrategy implements EncryptionStrategy {
     x = x % 1.0;
     if (x < 0.001) x = 0.001;
     if (x > 0.999) x = 0.999;
-
-    print('🌟️ LOGISTIC: Initial x=$x, hash=$hash, hash2=$hash2');
 
     const double r = 3.999999999; // Parameter near chaos threshold
     List<int> grid = [];
@@ -85,15 +81,8 @@ class ChaosLogisticStrategy implements EncryptionStrategy {
       int finalMod = (bytes[(i + bytes.length) % bytes.length] + hash + hash2 + i) % 23;
       inkId = (inkId + finalMod) % 5;
 
-      if (kDebugMode && i < 10) {
-        print('🌟️ LOGISTIC: i=$i, x=$x, inkId=$inkId, pos1=$positionFactor1, pos2=$positionFactor2, finalMod=$finalMod');
-      }
-
       grid.add(inkId);
     }
-
-    print('🌟️ LOGISTIC: Final pattern for "$input": first_10=${grid.take(10).join(',')}');
-    print('🌟️ LOGISTIC: Pattern summary: length=${grid.length}, unique=${grid.toSet().length}');
 
     return grid;
   }

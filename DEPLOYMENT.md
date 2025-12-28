@@ -1,7 +1,29 @@
-# LatticeLock Docker Deployment Guide
+# LatticeLock Deployment Guide
 
 ## Overview
-This guide covers the complete Docker deployment of the LatticeLock Flutter web application with production-grade infrastructure including Nginx, Redis, PostgreSQL, and monitoring.
+
+LatticeLock consists of a Flutter frontend and FastAPI backend for professional PDF generation with security patterns. This guide covers local development and Docker deployment.
+
+## Architecture
+
+### Components
+
+1. **Flutter Web Frontend** - UI for pattern generation and visualization
+2. **FastAPI Backend** - Python backend with ReportLab for PDF generation
+3. **Docker Compose** - Container orchestration for full-stack deployment
+
+### Color Scheme Matching
+
+The system now uses **exact Flutter UI colors** in both frontend and PDF generation:
+
+| Ink ID | UI Label | Flutter Color | Hex Code | PDF Color |
+|--------|----------|---------------|-----------|-----------|
+| 0 | 75°C Reactive | `Colors.cyanAccent` | **#00E5FF** | CMYK(0.84, 0, 0.05, 0) |
+| 1 | 75°C Protected | `Colors.cyan` | **#00BCD4** | CMYK(1, 0, 0.12, 0.15) |
+| 2 | 55°C Reactive | `Colors.tealAccent` | **#1DE9B6** | CMYK(0.82, 0, 0.35, 0) |
+| 3 | 55°C Protected | `Colors.teal` | **#009688** | CMYK(1, 0, 0.35, 0.24) |
+| 4 | 35°C Marker | `Colors.blue` | **#2196F3** | CMYK(0.79, 0.49, 0, 0) |
+| 5 | Default | `Colors.cyanAccent` | **#00E5FF** | CMYK(0.84, 0, 0.05, 0) |
 
 ## Architecture
 
@@ -21,6 +43,63 @@ This guide covers the complete Docker deployment of the LatticeLock Flutter web 
 - Docker 20.10+ and Docker Compose 2.0+
 - Git
 - Make (optional, for using the Makefile)
+- Flutter 3.19+ (for local development)
+
+## Flutter Environment Configuration
+
+LatticeLock supports environment-based configuration for different deployment environments.
+
+### PDF API Base URL
+
+The `PDF_API_BASE_URL` environment variable controls the FastAPI backend endpoint for PDF generation.
+
+#### Development Environment
+
+Use the development environment file:
+
+```bash
+flutter run -d web-server --dart-define-from-file=lib/.env.dev
+```
+
+This will use the default development URL: `http://localhost:8001`
+
+#### Production Environment
+
+Use the production environment file:
+
+```bash
+flutter run -d web-server --dart-define-from-file=lib/.env.prod
+```
+
+This will use the production URL: `https://api.latticelock.com`
+
+#### Custom Environment
+
+You can also define the URL directly:
+
+```bash
+flutter run -d web-server --dart-define=PDF_API_BASE_URL=http://your-api-url.com
+```
+
+#### Environment File Format
+
+Environment files use a simple key=value format:
+
+```ini
+# lib/.env.dev
+PDF_API_BASE_URL=http://localhost:8001
+
+# lib/.env.prod
+PDF_API_BASE_URL=https://api.latticelock.com
+```
+
+#### Building for Production
+
+When building for production, use the production environment:
+
+```bash
+flutter build web --dart-define-from-file=lib/.env.prod
+```
 
 ## Quick Start
 

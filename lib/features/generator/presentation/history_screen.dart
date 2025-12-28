@@ -1,6 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/history_service.dart';
 import '../logic/history_state.dart';
@@ -12,14 +12,59 @@ class HistoryScreen extends ConsumerStatefulWidget {
   ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends ConsumerState<HistoryScreen> {
+class _HistoryScreenState extends ConsumerState<HistoryScreen> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   String _selectedAlgorithm = 'All';
   String _selectedMaterial = 'All';
   DateTimeRange? _dateRange;
+  bool _hasLoadedInitially = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kDebugMode) {
+      print('🔄 [HISTORY SCREEN] initState() called - loading history');
+    }
+    // Add observer to detect when app resumes
+    WidgetsBinding.instance.addObserver(this);
+    // Load history when screen is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(historyProvider.notifier).loadHistory();
+      _hasLoadedInitially = true;
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (kDebugMode) {
+      print('🔄 [HISTORY SCREEN] App lifecycle changed: $state');
+    }
+    // Reload history when app becomes visible again
+    if (state == AppLifecycleState.resumed) {
+      if (kDebugMode) {
+        print('🔄 [HISTORY SCREEN] App resumed - reloading history');
+      }
+      ref.read(historyProvider.notifier).loadHistory();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload when navigating back to this screen
+    if (_hasLoadedInitially) {
+      if (kDebugMode) {
+        print('🔄 [HISTORY SCREEN] didChangeDependencies - reloading history');
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(historyProvider.notifier).loadHistory();
+      });
+    }
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
   }
@@ -29,12 +74,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final historyState = ref.watch(historyProvider);
     final notifier = ref.read(historyProvider.notifier);
 
+    if (kDebugMode) {
+      print('🎨 [HISTORY SCREEN] build() called - entries: ${historyState.entries.length}, filtered: ${historyState.filteredEntries.length}');
+    }
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text(
           'PATTERN HISTORY',
-          style: GoogleFonts.plusJakartaSans(
+          style: const TextStyle(
             fontWeight: FontWeight.w700,
             letterSpacing: 2.0,
           ),
