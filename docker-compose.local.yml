@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
     container_name: latticelock-pdf-backend
     ports:
-      - "8000:8000"
+      - "8001:8000"  # Changed to 8001 externally to avoid conflicts
     environment:
       - HOST=0.0.0.0
       - PORT=8000
@@ -18,7 +18,7 @@ services:
     networks:
       - latticelock-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -29,16 +29,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: production
+      target: runtime-stage
     container_name: latticelock-web
     ports:
-      - "3000:80"
+      - "5501:80"  # Changed to 5501 externally to avoid conflicts
     depends_on:
       pdf-backend:
         condition: service_healthy
     environment:
       - FLUTTER_ENV=production
-      - PDF_API_URL=http://pdf-backend:8000
+      - PDF_API_URL=http://pdf-backend:8000  # Internal Docker network URL
     restart: unless-stopped
     networks:
       - latticelock-network
@@ -52,7 +52,7 @@ services:
     networks:
       - latticelock-network
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-latticelock_redis_2024}
+    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
