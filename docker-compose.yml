@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # FastAPI PDF Generation Backend (Primary Service)
   pdf-backend:
@@ -29,7 +27,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: production
       args:
         - PDF_API_BASE_URL=http://pdf-backend:8000
     container_name: latticelock-web
