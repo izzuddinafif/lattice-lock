@@ -30,15 +30,14 @@ services:
       context: .
       dockerfile: Dockerfile
       target: production
+      args:
+        - PDF_API_BASE_URL=http://pdf-backend:8000
     container_name: latticelock-web
     ports:
       - "3000:80"
     depends_on:
       pdf-backend:
         condition: service_healthy
-    environment:
-      - FLUTTER_ENV=production
-      - PDF_API_URL=http://pdf-backend:8000
     restart: unless-stopped
     networks:
       - latticelock-network

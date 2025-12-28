@@ -16,7 +16,11 @@ COPY . .
 
 # Configure web platform and build for production
 RUN flutter create . --platforms=web --project-name=latticelock
-RUN flutter build web --release --no-pub --csp
+
+# Build with API URL from build argument (defaults to localhost:8001)
+ARG PDF_API_BASE_URL=http://localhost:8001
+RUN flutter build web --release --no-pub --csp \
+    --dart-define=PDF_API_BASE_URL=${PDF_API_BASE_URL}
 
 # Stage 2: Nginx Runtime Stage
 FROM nginx:alpine AS runtime-stage
