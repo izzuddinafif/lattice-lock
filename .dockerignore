@@ -1,3 +1,7 @@
+# Include backend directory for Docker builds
+!backend/
+!backend/**/*
+
 # Flutter
 .dart_tool/
 .flutter-plugins
