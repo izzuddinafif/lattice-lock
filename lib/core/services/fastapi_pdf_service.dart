@@ -20,17 +20,30 @@ class FastApiPDFService implements PDFService {
   Future<PDFResult> generatePDF(PDFMetadata metadata) async {
     try {
       // Prepare the request data matching the FastAPI backend format
+      // Convert Map<int, Map<String, int>> to Map<String, Map<String, int>> for JSON
+      final materialColorsJson = metadata.materialColors?.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+
+      // Build metadata map
+      final metadataMap = {
+        'filename': metadata.filename,
+        'title': metadata.title,
+        'batch_code': metadata.batchCode,
+        'algorithm': metadata.algorithm,
+        'material_profile': metadata.materialProfile,
+        'timestamp': metadata.timestamp.toIso8601String(),
+        'pattern': metadata.pattern,
+        'grid_size': metadata.gridSize,
+      };
+
+      // Add material_colors if available
+      if (materialColorsJson != null) {
+        metadataMap['material_colors'] = materialColorsJson;
+      }
+
       final requestData = {
-        'metadata': {
-          'filename': metadata.filename,
-          'title': metadata.title,
-          'batch_code': metadata.batchCode,
-          'algorithm': metadata.algorithm,
-          'material_profile': metadata.materialProfile,
-          'timestamp': metadata.timestamp.toIso8601String(),
-          'pattern': metadata.pattern,
-          'grid_size': metadata.gridSize,
-        }
+        'metadata': metadataMap
       };
 
       // Make HTTP request to FastAPI backend
@@ -48,8 +61,6 @@ class FastApiPDFService implements PDFService {
 
         if (responseData['success'] == true) {
           final pdfBase64 = responseData['pdf_base64'] as String;
-          final filename = responseData['filename'] as String;
-          final size = responseData['size'] as int;
 
           // Convert base64 to bytes (handle both raw base64 and data URL format)
           final base64Data = pdfBase64.contains(',') ? pdfBase64.split(',')[1] : pdfBase64;
@@ -98,7 +109,7 @@ class FastApiPDFService implements PDFService {
           ..download = pdfResult.metadata.filename
           ..style.display = 'none';
 
-        html.document.body?.children?.add(anchor);
+        html.document.body?.children.add(anchor);
         anchor.click();
         anchor.remove();
 
@@ -140,9 +151,6 @@ class FastApiPDFService implements PDFService {
 
       return response.statusCode == 200;
     } catch (e) {
-      if (kDebugMode) {
-        print('FastAPI backend not available: $e');
-      }
       return false;
     }
   }

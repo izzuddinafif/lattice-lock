@@ -134,7 +134,6 @@ class InkConfigurationNotifier extends StateNotifier<InkConfigurationState> {
 
     // Update ink IDs to maintain order
     for (int i = 0; i < newInks.length; i++) {
-      final baseId = newInks[i].id.split('_').last;
       newInks[i] = newInks[i].copyWith(id: 'ink_$i');
     }
 

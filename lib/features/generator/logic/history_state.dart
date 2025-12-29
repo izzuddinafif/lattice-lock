@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/history_service.dart';
 import '../../generator/domain/generator_use_case.dart' show globalHistoryService;
@@ -28,9 +27,6 @@ class HistoryState {
     String? searchQuery,
     HistoryFilter? activeFilter,
   }) {
-    if (kDebugMode) {
-      print('🔄 [HISTORY STATE] copyWith called - entries: ${entries?.length ?? this.entries.length} → ${entries != null}, filtered: ${filteredEntries?.length ?? this.filteredEntries.length} → ${filteredEntries != null}');
-    }
     return HistoryState(
       entries: entries ?? this.entries,
       filteredEntries: filteredEntries ?? this.filteredEntries,
@@ -51,32 +47,17 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
   }
 
   Future<void> loadHistory() async {
-    if (kDebugMode) {
-      print('📖 [HISTORY NOTIFIER] loadHistory() called - current entries: ${state.entries.length}');
-    }
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      if (kDebugMode) {
-        print('📖 [HISTORY NOTIFIER] Loading from historyService (instance: ${identityHashCode(_historyService)})');
-      }
       final entries = await _historyService.getAllEntries();
-      if (kDebugMode) {
-        print('📖 [HISTORY NOTIFIER] Received ${entries.length} entries from service');
-      }
       state = state.copyWith(
         entries: entries,
         filteredEntries: entries,
         isLoading: false,
       );
-      if (kDebugMode) {
-        print('📖 [HISTORY NOTIFIER] State updated - new entries: ${state.entries.length}, filtered: ${state.filteredEntries.length}');
-      }
       _applyFilters();
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ [HISTORY NOTIFIER] Error loading history: $e');
-      }
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),

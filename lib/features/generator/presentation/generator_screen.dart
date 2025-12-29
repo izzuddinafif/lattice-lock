@@ -6,7 +6,6 @@ import 'dart:math' as math;
 import '../logic/generator_state.dart';
 import '../../../core/models/grid_config.dart';
 import '../../material/providers/material_profile_provider.dart';
-import '../../material/models/custom_ink_profile.dart';
 
 class GeneratorScreen extends ConsumerStatefulWidget {
   const GeneratorScreen({super.key});
@@ -20,30 +19,22 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
   final TextEditingController _keyController = TextEditingController();
   
   // Grid controllers
-  late int _gridSize;
-  late List<List<int>> _currentPattern;
-  late List<String> _selectedInks;
-  
+
   // PDF generation controllers
   late ScrollController _leftScrollController;
   late ScrollController _rightScrollController;
-  
+
   // State variables
-  String _selectedAlgorithm = 'chaos_logistic';
   String? _selectedProfileId;
-  bool _isGenerating = false;
-  String _statusMessage = 'Ready to generate secure pattern';
-  bool _showAdvancedSettings = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeGrid();
-    
+
     // Initialize scroll controllers
     _leftScrollController = ScrollController();
     _rightScrollController = ScrollController();
-    
+
     // Load saved data if available
     _loadSavedData();
   }
@@ -55,16 +46,6 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
     _leftScrollController.dispose();
     _rightScrollController.dispose();
     super.dispose();
-  }
-
-  void _initializeGrid() {
-    final defaultConfig = GridConfig.presets.first;
-    _gridSize = defaultConfig.size;
-    _currentPattern = List.generate(
-      _gridSize,
-      (i) => List.generate(_gridSize, (j) => 0),
-    );
-    _selectedInks = ['Black', 'Blue', 'Red', 'Green', 'Yellow'];
   }
 
   void _loadSavedData() {
@@ -235,7 +216,10 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                       contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                     ),
                     style: const TextStyle(fontSize: 16),
-                    onChanged: (val) => notifier.updateInputText(val),
+                    onChanged: (val) {
+                      _inputController.text = val;
+                      notifier.updateInputText(val);
+                    },
                   ),
                   
                   const SizedBox(height: 48), // Increased from 24
@@ -286,7 +270,7 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                 prefixIcon: Icon(Icons.layers, color: Colors.blue.shade700),
                               ),
-                              value: _selectedProfileId ?? activeProfile?.id,
+                              initialValue: _selectedProfileId ?? activeProfile?.id,
                               isExpanded: true,
                               items: profiles.map((profile) {
                                 return DropdownMenuItem<String>(
@@ -323,12 +307,49 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                                 );
                               }).toList(),
                               onChanged: (profileId) {
+                                if (kDebugMode) {
+                                  print('🔄 [GENERATOR] Material profile changed to: $profileId');
+                                  print('🔄 [GENERATOR] Input text: "${_inputController.text}"');
+                                  print('🔄 [GENERATOR] Is input not empty: ${_inputController.text.trim().isNotEmpty}');
+                                }
                                 if (profileId != null) {
                                   setState(() {
                                     _selectedProfileId = profileId;
                                   });
 
-                                  // Set the selected profile as active
+                                  // DON'T call setActiveProfile() here - it's async and causes race condition
+                                  // Instead, get the profile directly from the provider's profiles list
+                                  final materialState = ref.read(materialProfileProvider);
+
+                                  // Find the profile by ID in the profiles list
+                                  final profile = materialState.profiles.firstWhere(
+                                    (p) => p.id == profileId,
+                                    orElse: () => materialState.activeProfile ?? materialState.profiles.first,
+                                  );
+
+                                  final newMaterial = profile.toMaterialProfile();
+
+                                  if (kDebugMode) {
+                                    print('🔄 [UI] Retrieved newMaterial: ${newMaterial.name} (${newMaterial.inks.length} inks)');
+                                  }
+
+                                  // Auto-regenerate pattern IMMEDIATELY if there's input text
+                                  if (_inputController.text.trim().isNotEmpty) {
+                                    if (kDebugMode) {
+                                      print('🔄 [UI] Triggering IMMEDIATE regeneration...');
+                                    }
+                                    // DON'T use postFrameCallback - call synchronously to avoid race conditions
+                                    ref.read(generatorProvider.notifier).updateMaterial(newMaterial);
+                                    ref.read(generatorProvider.notifier).regenerate();
+                                  } else {
+                                    // Just update material, no regeneration
+                                    if (kDebugMode) {
+                                      print('⚠️ [GENERATOR] No input text, updating material without regeneration');
+                                    }
+                                    ref.read(generatorProvider.notifier).updateMaterial(newMaterial);
+                                  }
+
+                                  // Now set the active profile in background (doesn't block generation)
                                   ref.read(materialProfileProvider.notifier).setActiveProfile(profileId);
                                 }
                               },
@@ -864,7 +885,10 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                         contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                       ),
                       style: const TextStyle(fontSize: 16),
-                      onChanged: (val) => notifier.updateInputText(val),
+                      onChanged: (val) {
+                        _inputController.text = val;
+                        notifier.updateInputText(val);
+                      },
                     ),
                   ],
                 ),
@@ -931,7 +955,7 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             prefixIcon: Icon(Icons.layers, color: Colors.blue.shade700),
                           ),
-                          value: _selectedProfileId ?? activeProfile?.id,
+                          initialValue: _selectedProfileId ?? activeProfile?.id,
                           isExpanded: true,
                           items: profiles.map((profile) {
                             return DropdownMenuItem<String>(
@@ -968,12 +992,49 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                             );
                           }).toList(),
                           onChanged: (profileId) {
+                            if (kDebugMode) {
+                              print('🔄 [GENERATOR] Material profile changed to: $profileId');
+                              print('🔄 [GENERATOR] Input text: "${_inputController.text}"');
+                              print('🔄 [GENERATOR] Is input not empty: ${_inputController.text.trim().isNotEmpty}');
+                            }
                             if (profileId != null) {
                               setState(() {
                                 _selectedProfileId = profileId;
                               });
 
-                              // Set the selected profile as active
+                              // DON'T call setActiveProfile() here - it's async and causes race condition
+                              // Instead, get the profile directly from the provider's profiles list
+                              final materialState = ref.read(materialProfileProvider);
+
+                              // Find the profile by ID in the profiles list
+                              final profile = materialState.profiles.firstWhere(
+                                (p) => p.id == profileId,
+                                orElse: () => materialState.activeProfile ?? materialState.profiles.first,
+                              );
+
+                              final newMaterial = profile.toMaterialProfile();
+
+                              if (kDebugMode) {
+                                print('🔄 [UI] Retrieved newMaterial: ${newMaterial.name} (${newMaterial.inks.length} inks)');
+                              }
+
+                              // Auto-regenerate pattern IMMEDIATELY if there's input text
+                              if (_inputController.text.trim().isNotEmpty) {
+                                if (kDebugMode) {
+                                  print('🔄 [UI] Triggering IMMEDIATE regeneration...');
+                                }
+                                // DON'T use postFrameCallback - call synchronously to avoid race conditions
+                                ref.read(generatorProvider.notifier).updateMaterial(newMaterial);
+                                ref.read(generatorProvider.notifier).regenerate();
+                              } else {
+                                // Just update material, no regeneration
+                                if (kDebugMode) {
+                                  print('⚠️ [GENERATOR] No input text, updating material without regeneration');
+                                }
+                                ref.read(generatorProvider.notifier).updateMaterial(newMaterial);
+                              }
+
+                              // Now set the active profile in background (doesn't block generation)
                               ref.read(materialProfileProvider.notifier).setActiveProfile(profileId);
                             }
                           },

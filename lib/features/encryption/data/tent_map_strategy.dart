@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import '../domain/encryption_strategy.dart';
 import 'dart:convert';
 
@@ -11,9 +10,14 @@ class TentMapStrategy implements EncryptionStrategy {
   String get name => "Tent Map (Chaos)";
 
   @override
-  List<int> encrypt(String input, int length) {
-    print('🔥 TENT MAP encrypt() called with input="$input", length=$length');
-    print('🔥 Hash computation starting...');
+  List<int> encrypt(String input, int length, [int numInks = 5]) {
+    // Handle empty input gracefully
+    if (input.isEmpty) {
+      if (numInks < 2) numInks = 2;
+      if (numInks > 10) numInks = 10;
+      final maxInkId = numInks - 1;
+      return List.filled(length, maxInkId);
+    }
 
     // 1. Generate ultra-sensitive seed from input
     final bytes = utf8.encode(input);
@@ -28,12 +32,13 @@ class TentMapStrategy implements EncryptionStrategy {
     double x = ((hash % 999983) + (bytes.length * bytes.length * bytes.length * 211) + 12345) / 999984.0;
     if (x <= 0.001 || x >= 0.999) x = 0.618033988749895;
 
-    if (kDebugMode) {
-      print('DEBUG: input="$input" -> bytes=$bytes, hash=$hash, initial_x=$x');
-    }
-
     const double r = 2.0; // Parameter for full chaotic behavior
     List<int> grid = [];
+
+    // Validate numInks
+    if (numInks < 2) numInks = 2;
+    if (numInks > 10) numInks = 10;
+    final maxInkId = numInks - 1;
 
     // 2. Generate Chaos Stream with maximum sensitivity
     for (int i = 0; i < length; i++) {
@@ -56,16 +61,16 @@ class TentMapStrategy implements EncryptionStrategy {
       if (x < 0.0) x = 0.001;
       if (x > 1.0) x = 0.999;
 
-      // 3. Ultra-enhanced quantization with strong input coupling
-      int inkId = (x * 5).floor();
-      if (inkId > 4) inkId = 4;
+      // 3. Ultra-enhanced quantization with strong input coupling - USE DYNAMIC numInks
+      int inkId = (x * numInks).floor();
+      if (inkId > maxInkId) inkId = maxInkId;
 
       // EXTREME position-input coupling with overflow protection
       // Use modulo operations to prevent integer overflow
       int positionFactor = ((i % 1000) * (i % 1000) * (i % 1000) * 19) % 13;
       positionFactor ^= ((hash >> (i % 4)) & 15); // Use more hash bits
       positionFactor ^= (bytes[(i * 3) % bytes.length] % 11); // Add input byte coupling
-      inkId = (inkId + positionFactor) % 5;
+      inkId = (inkId + positionFactor) % numInks;
 
       // Frequent re-seeding based on input changes (every 7 steps instead of 17)
       if (i > 0 && i % 7 == 0) {
@@ -75,18 +80,9 @@ class TentMapStrategy implements EncryptionStrategy {
 
       // Add input-dependent final modification
       int finalMod = (bytes[(i + bytes.length) % bytes.length] + hash + i) % 17;
-      inkId = (inkId + finalMod) % 5;
-
-      if (kDebugMode && i < 10) { // Debug first 10 elements only
-        print('DEBUG: i=$i, perturbation=$perturbation, x=$x, inkId=$inkId, positionFactor=$positionFactor, finalMod=$finalMod');
-      }
+      inkId = (inkId + finalMod) % numInks;
 
       grid.add(inkId);
-    }
-
-    if (kDebugMode) {
-      print('DEBUG: Final pattern for "$input": first_20=${grid.take(20).join(',')}');
-      print('DEBUG: Pattern summary for "$input": length=${grid.length}, unique=${grid.toSet().length}');
     }
 
     return grid;

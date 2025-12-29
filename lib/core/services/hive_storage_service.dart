@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'history_service.dart';
@@ -28,17 +28,7 @@ class HiveStorageService implements HistoryService {
 
       final jsonList = entries.map((e) => e.toJson()).toList();
       await _box.put(_entriesKey, jsonList);
-
-      if (kDebugMode) {
-        print('💾 [HIVE STORAGE] Saved entry: ${entry.batchCode} (total: ${entries.length} entries)');
-        if (kIsWeb) {
-          print('💾 [HIVE STORAGE] Data persisted to IndexedDB');
-        }
-      }
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ [HIVE STORAGE] Failed to save entry: $e');
-      }
       throw HistoryServiceException('Failed to save entry: ${e.toString()}');
     }
   }
@@ -53,15 +43,8 @@ class HiveStorageService implements HistoryService {
           .toList()
         ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-      if (kDebugMode) {
-        print('📖 [HIVE STORAGE] Loaded ${entries.length} entries from ${kIsWeb ? "IndexedDB" : "Hive box"}');
-      }
-
       return entries;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ [HIVE STORAGE] Failed to load entries: $e');
-      }
       throw HistoryServiceException('Failed to load entries: ${e.toString()}');
     }
   }
@@ -145,10 +128,6 @@ class HiveStorageService implements HistoryService {
     if (_isInitialized) return;
 
     try {
-      if (kDebugMode) {
-        print('💾 [HIVE STORAGE] Initializing on ${kIsWeb ? "WEB" : "NATIVE"} platform');
-      }
-
       // Hive initialization is already handled in main.dart for both platforms
       // Hive.initFlutter() supports IndexedDB on web
 
@@ -164,13 +143,7 @@ class HiveStorageService implements HistoryService {
       }
 
       _isInitialized = true;
-      if (kDebugMode) {
-        print('✅ [HIVE STORAGE] Initialized successfully');
-      }
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ [HIVE STORAGE] Initialization failed: $e');
-      }
       throw HistoryServiceException('Failed to initialize Hive storage: ${e.toString()}');
     }
   }

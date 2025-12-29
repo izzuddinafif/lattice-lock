@@ -189,52 +189,7 @@ class CryptoIntegrationTest {
       };
     }
   }
-  
-  /// Test backward compatibility with existing chaos algorithms
-  static Future<Map<String, dynamic>> _testBackwardCompatibility() async {
-    try {
-      final generator = GeneratorUseCase();
-      
-      // Test all existing algorithms
-      final algorithms = ['chaos_logistic', 'chaos_tent', 'chaos_arnolds_cat'];
-      final results = <String, Map<String, dynamic>>{};
-      
-      for (final algorithm in algorithms) {
-        try {
-          final pattern = await generator.generatePattern(
-            inputText: 'test input',
-            algorithm: algorithm,
-          );
-          
-          results[algorithm] = {
-            'success': true,
-            'patternLength': pattern.length,
-            'validRange': pattern.every((value) => value >= 0 && value <= 4),
-          };
-        } catch (e) {
-          results[algorithm] = {
-            'success': false,
-            'error': e.toString(),
-          };
-        }
-      }
-      
-      final allPassed = results.values.every((result) => result['success'] == true);
-      
-      return {
-        'success': allPassed,
-        'algorithms': results,
-        'message': allPassed ? 'Backward compatibility test passed' : 'Some algorithms failed'
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'error': e.toString(),
-        'message': 'Backward compatibility test failed'
-      };
-    }
-  }
-  
+
   /// Print test results in a formatted way
   // ignore: avoid_print
   static void printTestResults(Map<String, dynamic> results) {

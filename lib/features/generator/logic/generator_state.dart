@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
+import 'dart:math';
 import '../domain/generator_use_case.dart';
 import '../../material/models/ink_profile.dart';
-import '../../material/models/custom_ink_profile.dart';
 import '../../material/providers/material_profile_provider.dart';
 import '../../../core/models/grid_config.dart';
 
@@ -49,6 +49,7 @@ class GeneratorState {
 class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
   GeneratorUseCase? _generatorUseCase;
   Timer? _debounceTimer;
+  bool _disposed = false;
 
   @override
   GeneratorState build() {
@@ -57,6 +58,7 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
 
     // Set up cleanup for timer when notifier is disposed
     ref.onDispose(() {
+      _disposed = true;
       _debounceTimer?.cancel();
     });
 
@@ -66,50 +68,95 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
       orElse: () => GridConfig.presets.first, // Fallback to 2x2 if 8x8 not found
     );
 
-    // Watch material profile provider for active profile
-    final materialProfileState = ref.watch(materialProfileProvider);
-    MaterialProfile selectedMaterial;
-
-    if (materialProfileState.activeProfile != null) {
-      // Convert custom profile to standard MaterialProfile
-      selectedMaterial = materialProfileState.activeProfile!.toMaterialProfile();
-    } else {
-      // Fallback to standard set if no custom profile is active
-      selectedMaterial = MaterialProfile.standardSet;
-    }
-
-    return GeneratorState(
+    // CRITICAL: Don't read materialProfileProvider here - it might not be loaded yet
+    // The provider loads asynchronously from Hive, so activeProfile could be null
+    // Start with standard set, then initializeAsync() will load the saved profile
+    final initialState = GeneratorState(
       inputText: '',
       selectedAlgorithm: 'chaos_logistic',
-      selectedMaterial: selectedMaterial,
-      selectedGridConfig: defaultGridConfig, // Use configurable grid instead of hardcoded
+      selectedMaterial: MaterialProfile.standardSet, // Start with default
+      selectedGridConfig: defaultGridConfig,
       encryptedPattern: [],
       isGenerating: false,
     );
+
+    // Load saved material profile asynchronously after provider is ready
+    _initializeFromSavedState();
+
+    return initialState;
+  }
+
+  Future<void> _initializeFromSavedState() async {
+    // Wait for Hive to finish loading - retry up to 10 times with 200ms delay
+    for (int i = 0; i < 10; i++) {
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      final materialProfileState = ref.read(materialProfileProvider);
+
+      // Check if profiles have loaded (not empty list)
+      if (materialProfileState.profiles.isNotEmpty) {
+        if (materialProfileState.activeProfile != null) {
+          final savedMaterial = materialProfileState.activeProfile!.toMaterialProfile();
+
+          // Update state with saved material profile
+          state = AsyncValue.data(state.value!.copyWith(
+            selectedMaterial: savedMaterial,
+          ));
+          return;
+        } else {
+          return;
+        }
+      }
+    }
   }
 
   void updateInputText(String text) {
     state = AsyncValue.data(state.value!.copyWith(inputText: text));
-    
+
     // Debounce pattern generation to avoid excessive calls during typing
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      _generatePattern();
+      if (!_disposed) {
+        _generatePattern();
+      }
     });
   }
 
+  // Immediate regeneration without debounce (for material profile changes)
+  void regenerate() {
+    _debounceTimer?.cancel();
+    _generatePattern();
+  }
+
   void updateAlgorithm(String algorithm) {
-    state = AsyncValue.data(state.value!.copyWith(selectedAlgorithm: algorithm));
+    // CRITICAL: Clear the pattern when algorithm changes to prevent mismatches
+    // Different algorithms produce different patterns for the same input
+    state = AsyncValue.data(state.value!.copyWith(
+      selectedAlgorithm: algorithm,
+      encryptedPattern: [], // Clear pattern before regeneration
+    ));
     _generatePattern();
   }
 
   void updateMaterial(MaterialProfile material) {
-    state = AsyncValue.data(state.value!.copyWith(selectedMaterial: material));
-    _generatePattern();
+    // CRITICAL: Clear the pattern when material changes to prevent mismatches
+    // Different ink count means pattern values become invalid (e.g., ink ID 4 exists in 5-ink but not 3-ink)
+    state = AsyncValue.data(state.value!.copyWith(
+      selectedMaterial: material,
+      encryptedPattern: [], // Always clear pattern when material changes
+    ));
+
+    // Don't call _generatePattern() here - let the UI call regenerate() to avoid race conditions
   }
 
   void updateGridConfig(GridConfig gridConfig) {
-    state = AsyncValue.data(state.value!.copyWith(selectedGridConfig: gridConfig));
+    // CRITICAL: Clear the pattern when grid size changes to prevent mismatches
+    // If input is empty, old pattern stays but grid config changes -> state desync
+    state = AsyncValue.data(state.value!.copyWith(
+      selectedGridConfig: gridConfig,
+      encryptedPattern: [], // Always clear pattern when grid changes
+    ));
+
     _generatePattern();
   }
 
@@ -124,10 +171,14 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
     state = AsyncValue.data(currentState.copyWith(isGenerating: true, error: null));
 
     try {
+      // Get the number of inks from the selected material
+      final numInks = currentState.selectedMaterial.inks.length;
+
       final pattern = await _generatorUseCase!.generatePattern(
         inputText: currentState.inputText,
         algorithm: currentState.selectedAlgorithm,
         gridSize: currentState.selectedGridConfig.size, // Pass configurable grid size
+        numInks: numInks, // Pass dynamic ink count from material
       );
 
       state = AsyncValue.data(currentState.copyWith(
@@ -146,22 +197,43 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
 
   Future<void> generatePDF() async {
     final currentState = state.value!;
-    
+
+    // Calculate actual grid size from pattern length
+    final patternLength = currentState.encryptedPattern.length;
+    final actualGridSize = patternLength > 0 ? sqrt(patternLength).round() : 0;
+    final configGridSize = currentState.selectedGridConfig.size;
+
     if (currentState.encryptedPattern.isEmpty) {
       state = AsyncValue.data(currentState.copyWith(error: 'No pattern to generate PDF'));
+      return;
+    }
+
+    // Validate pattern forms a perfect square grid
+    if (actualGridSize * actualGridSize != patternLength) {
+      state = AsyncValue.data(currentState.copyWith(
+        error: 'Invalid pattern: $patternLength cells does not form a square grid (expected ${actualGridSize * actualGridSize} for $actualGridSize×$actualGridSize)'
+      ));
+      return;
+    }
+
+    if (actualGridSize < 2 || actualGridSize > 32) {
+      state = AsyncValue.data(currentState.copyWith(
+        error: 'Invalid grid size: $actualGridSize (must be between 2 and 32)'
+      ));
       return;
     }
 
     state = AsyncValue.data(currentState.copyWith(isGenerating: true));
 
     try {
+      // Use actual grid size from pattern to avoid 422 errors
       await _generatorUseCase!.generatePDF(
         pattern: currentState.encryptedPattern,
         material: currentState.selectedMaterial,
         inputText: currentState.inputText,
-        gridSize: currentState.selectedGridConfig.size, // Pass configurable grid size
+        gridSize: actualGridSize > 0 ? actualGridSize : configGridSize, // Use actual grid size if available
       );
-      
+
       state = AsyncValue.data(currentState.copyWith(
         isGenerating: false,
         error: null,

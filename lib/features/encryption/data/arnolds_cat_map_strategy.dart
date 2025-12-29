@@ -12,7 +12,15 @@ class ArnoldsCatMapStrategy implements EncryptionStrategy {
   String get name => "Arnold's Cat Map (Chaos)";
 
   @override
-  List<int> encrypt(String input, int length) {
+  List<int> encrypt(String input, int length, [int numInks = 5]) {
+    // Handle empty input gracefully
+    if (input.isEmpty) {
+      if (numInks < 2) numInks = 2;
+      if (numInks > 10) numInks = 10;
+      final maxInkId = numInks - 1;
+      return List.filled(length, maxInkId);
+    }
+
     // 1. Generate Seed from Input with high entropy
     final bytes = utf8.encode(input);
     int hash = 0;
@@ -31,6 +39,11 @@ class ArnoldsCatMapStrategy implements EncryptionStrategy {
     }
 
     List<int> grid = [];
+
+    // Validate numInks
+    if (numInks < 2) numInks = 2;
+    if (numInks > 10) numInks = 10;
+    final maxInkId = numInks - 1;
 
     // 2. Generate Chaos Stream using Arnold's Cat Map principles
     for (int i = 0; i < length; i++) {
@@ -53,14 +66,14 @@ class ArnoldsCatMapStrategy implements EncryptionStrategy {
       double byteInfluence = bytes[byteIndex] / 255.0;
       chaosValue = (chaosValue * 0.7 + byteInfluence * 0.3) % 1.0;
 
-      // 3. Quantization: Map [0.0, 1.0] to [0, 4]
-      int inkId = (chaosValue * 5).floor();
-      if (inkId > 4) inkId = 4; // Safety clamp
+      // 3. Quantization: Map [0.0, 1.0] to [0, maxInkId] - USE DYNAMIC numInks
+      int inkId = (chaosValue * numInks).floor();
+      if (inkId > maxInkId) inkId = maxInkId; // Safety clamp
       if (inkId < 0) inkId = 0; // Safety clamp
 
-      // Add position-based entropy
-      int positionSalt = ((x + y + i) * 13) % 5;
-      inkId = (inkId + positionSalt) % 5;
+      // Add position-based entropy - USE DYNAMIC numInks
+      int positionSalt = ((x + y + i) * 13) % numInks;
+      inkId = (inkId + positionSalt) % numInks;
 
       grid.add(inkId);
 

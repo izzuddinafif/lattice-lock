@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import '../../encryption/domain/encryption_strategy.dart';
@@ -22,14 +21,7 @@ class GeneratorUseCase {
       await NativeCryptoService.initialize();
       _currentKeyId = await NativeCryptoService.generateNewKey();
       _useNativeCrypto = await NativeCryptoService.isAvailable();
-      
-      if (kDebugMode) {
-        print('GeneratorUseCase initialized with native crypto: $_useNativeCrypto');
-      }
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to initialize native crypto, falling back to chaos algorithms: $e');
-      }
       _useNativeCrypto = false;
     }
   }
@@ -139,6 +131,7 @@ class GeneratorUseCase {
     required String inputText,
     required String algorithm,
     int? gridSize, // Optional grid size parameter
+    int? numInks, // Number of inks in the material profile (default to 5 for backward compatibility)
   }) async {
     // Set algorithm based on selection
     setAlgorithm(algorithm);
@@ -146,8 +139,12 @@ class GeneratorUseCase {
     // Calculate total cells based on grid size (default to 8x8 for backward compatibility)
     final totalCells = AppConstants.getTotalCells(gridSize ?? AppConstants.defaultGridSize);
 
-    // Encrypt input text to pattern
-    final encryptedData = _encryptionStrategy.encrypt(inputText, totalCells);
+    // Encrypt input text to pattern with dynamic ink count
+    final encryptedData = _encryptionStrategy.encrypt(
+      inputText,
+      totalCells,
+      numInks ?? 5, // Default to 5 inks if not specified
+    );
 
     return encryptedData;
   }
@@ -173,16 +170,28 @@ class GeneratorUseCase {
         pattern2D.add(pattern.sublist(i, end));
       }
 
+      // Extract material colors for backend PDF generation
+      final materialColors = <int, Map<String, int>>{};
+      for (var ink in material.inks) {
+        final color = ink.visualColor;
+        materialColors[ink.id] = {
+          'r': (color.r * 255.0).round().clamp(0, 255),
+          'g': (color.g * 255.0).round().clamp(0, 255),
+          'b': (color.b * 255.0).round().clamp(0, 255),
+        };
+      }
+
       // Create PDF metadata
       final metadata = PDFMetadata(
         filename: 'blueprint_${DateTime.now().millisecondsSinceEpoch}.pdf',
         title: 'LatticeLock Security Tag Blueprint',
         batchCode: inputText.substring(0, inputText.length.clamp(0, 20)),
-        algorithm: _encryptionStrategy.runtimeType.toString(),
+        algorithm: _encryptionStrategy.name,
         materialProfile: material.name,
         timestamp: DateTime.now(),
         pattern: pattern2D,
         gridSize: actualGridSize, // Explicitly pass grid size
+        materialColors: materialColors,
         additionalData: {
           'inputText': inputText,
           'materialName': material.name,
@@ -205,34 +214,21 @@ class GeneratorUseCase {
         pdfPath: metadata.filename,
         metadata: {
           ...metadata.additionalData,
+          'materialColors': materialColors,
           'pdfGenerationSuccess': pdfResult.success,
           'pdfError': pdfResult.error,
         },
       );
 
-      if (kDebugMode) {
-        print('💾 [GENERATOR] Saving to historyService (instance: ${identityHashCode(historyService)})');
-      }
       await historyService.saveEntry(historyEntry);
 
       if (pdfResult.success) {
         // Download or share PDF based on platform
         await pdfService.downloadOrSharePDF(pdfResult);
-
-        if (kDebugMode) {
-          print('PDF generated and saved successfully: ${metadata.filename}');
-        }
       } else {
-        if (kDebugMode) {
-          print('PDF generation failed but pattern saved to history: ${pdfResult.error}');
-        }
-        // Don't throw exception - pattern was still generated and saved
-        print('Warning: PDF generation failed: ${pdfResult.error}');
+        // Pattern was still generated and saved to history
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('PDF generation error: $e');
-      }
       rethrow;
     }
   }

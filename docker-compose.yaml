@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: latticelock-pdf-backend
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - HOST=0.0.0.0
       - PORT=8000
@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        - PDF_API_BASE_URL=http://pdf-backend:8000
+        - PDF_API_BASE_URL=http://pdf-backend:8001
     container_name: latticelock-web
     ports:
       - "3000:80"

@@ -23,7 +23,6 @@ class InkConfigurationScreen extends ConsumerStatefulWidget {
 class _InkConfigurationScreenState
     extends ConsumerState<InkConfigurationScreen> {
   final TextEditingController _profileNameController = TextEditingController();
-  bool _hasUnsavedChanges = false;
 
   @override
   void initState() {
@@ -236,7 +235,6 @@ class _InkConfigurationScreenState
               hintText: 'e.g., My Custom Material Set',
               border: OutlineInputBorder(),
             ),
-            onChanged: (_) => setState(() => _hasUnsavedChanges = true),
           ),
           const SizedBox(height: 24),
 
@@ -254,7 +252,6 @@ class _InkConfigurationScreenState
             label: '${config.inkCount}',
             onChanged: (value) {
               ref.read(inkConfigurationProvider.notifier).setInkCount(value.toInt());
-              setState(() => _hasUnsavedChanges = true);
             },
           ),
           const SizedBox(height: 24),
@@ -302,11 +299,9 @@ class _InkConfigurationScreenState
               ink: ink,
               onNameChanged: (name) {
                 ref.read(inkConfigurationProvider.notifier).updateInkName(index, name);
-                setState(() => _hasUnsavedChanges = true);
               },
               onCodeChanged: (code) {
                 ref.read(inkConfigurationProvider.notifier).updateInkCode(index, code);
-                setState(() => _hasUnsavedChanges = true);
               },
               onColorTap: () => _showColorPicker(index),
               onRoleTap: () => _showRoleSelector(index),

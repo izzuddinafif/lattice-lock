@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 from typing import List, Optional, Dict, Any
 import io
 import base64
@@ -17,12 +17,13 @@ from datetime import datetime
 import uuid
 import os
 from reportlab.lib.pagesizes import letter, A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch, mm
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 import logging
+import traceback
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -102,21 +103,30 @@ class PDFMetadata(BaseModel):
     pattern: List[List[int]] = Field(..., description="Grid pattern data")
     grid_size: int = Field(default=8, description="Grid size (e.g., 8 for 8x8)")
     additional_data: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    material_colors: Optional[Dict[str, Dict[str, int]]] = Field(None, description="Dynamic material colors (ink_id -> {r, g, b})")
 
-    @validator('pattern')
-    def validate_pattern(cls, v, values):
-        grid_size = values.get('grid_size', 8)
-        if len(v) != grid_size:
+    @model_validator(mode='after')
+    def validate_pattern(self):
+        grid_size = self.grid_size
+        pattern = self.pattern
+        material_colors = self.material_colors
+
+        if len(pattern) != grid_size:
             raise ValueError(f"Pattern must have exactly {grid_size} rows")
-        for i, row in enumerate(v):
+        for i, row in enumerate(pattern):
             if len(row) != grid_size:
                 raise ValueError(f"Row {i} must have exactly {grid_size} columns")
             for cell in row:
-                if cell not in INK_COLORS.keys():
+                # Only validate against INK_COLORS if custom material_colors NOT provided
+                if material_colors is None and cell not in INK_COLORS.keys():
                     raise ValueError(f"Invalid ink value {cell}. Must be one of {list(INK_COLORS.keys())}")
-        return v
+                # Ensure cell value is non-negative
+                if cell < 0:
+                    raise ValueError(f"Invalid ink value {cell}. Must be non-negative")
+        return self
 
-    @validator('grid_size')
+    @field_validator('grid_size')
+    @classmethod
     def validate_grid_size(cls, v):
         if v < 2 or v > 32:
             raise ValueError("Grid size must be between 2 and 32")
@@ -135,14 +145,6 @@ class PDFGenerationResponse(BaseModel):
 
 class PDFGenerator:
     def __init__(self):
-        # Dynamic cell sizing based on grid size - LARGE SQUARE cells
-        # Size in points (1 point = 1/72 inch, 72 points = 1 inch)
-        self.cell_sizes = {
-            2: 120, 3: 100, 4: 90, 5: 80, 6: 70,   # Smaller grids - larger cells
-            8: 60, 10: 50, 12: 45, 16: 40,           # Standard grids - balanced size
-            20: 35, 24: 32, 32: 30,                    # Large grids - smaller but still visible
-        }
-
         # Ink names for legend (matching Flutter UI)
         self.ink_names = {
             0: ("75°C Reactive (Data High)", "#00E5FF", colors.CMYKColor(0.84, 0, 0.05, 0, spotName='CyanAccent')),
@@ -201,12 +203,12 @@ class PDFGenerator:
         ]))
 
         story.append(metadata_table)
-        story.append(Spacer(0.3*inch, 0.3*inch))
+        story.append(Spacer(0.1*inch, 0.1*inch))
 
         # Grid visualization title
         grid_title = Paragraph("Security Pattern Visualization", styles['Heading2'])
         story.append(grid_title)
-        story.append(Spacer(0.1*inch, 0.1*inch))
+        story.append(Spacer(0.05*inch, 0.05*inch))
 
         # Create colored grid
         story.append(self._create_colored_grid(metadata))
@@ -252,9 +254,23 @@ class PDFGenerator:
         """Create the actual colored grid visualization matching Flutter UI"""
         grid_size = metadata.grid_size
         pattern = metadata.pattern
+        material_colors = metadata.material_colors  # Get dynamic colors
 
-        # Get dynamic cell size based on grid size
-        cell_size = self.cell_sizes.get(grid_size, 60)
+        # Calculate cell size to fit within page boundaries
+        # A4 page: 595 × 842 points
+        # Margins: 30 points each side
+        # Usable: 535 × 782 points
+        # Reserve space for other elements (metadata, title, footer): ~150 points vertical
+        usable_width = 535   # 595 - 30 - 30
+        usable_height = 632  # 782 - 150 (reserve for title, metadata, footer)
+
+        # Calculate max cell size that fits in both dimensions
+        max_cell_width = usable_width / grid_size
+        max_cell_height = usable_height / grid_size
+        cell_size = min(max_cell_width, max_cell_height)
+
+        # Ensure minimum cell size for visibility (min 10 points)
+        cell_size = max(cell_size, 10)
 
         # Create table data for the grid
         grid_data = []
@@ -262,12 +278,18 @@ class PDFGenerator:
             row_data = []
             for col in range(grid_size):
                 # Get the ink value for this cell
-                ink_value = pattern[row][col] if row < len(pattern) and col < len(pattern[row]) else 0
-                color = INK_COLORS.get(ink_value, INK_COLORS[0])
+                # Note: Bounds checking not needed - validator ensures pattern is grid_size × grid_size
+                ink_value = pattern[row][col]
+
+                # Use dynamic colors if provided, otherwise fall back to static INK_COLORS
+                if material_colors and str(ink_value) in material_colors:
+                    rgb = material_colors[str(ink_value)]
+                    color = colors.Color(rgb['r']/255.0, rgb['g']/255.0, rgb['b']/255.0)
+                else:
+                    color = INK_COLORS.get(ink_value, INK_COLORS[0])
 
                 # CRITICAL FIX: Use a fixed-size Spacer to force cell height
                 # Empty Paragraphs don't enforce height, but Spacers do!
-                from reportlab.platypus import Spacer
                 # Spacer forces exact dimensions - width x height in points
                 fixed_cell = Spacer(cell_size, cell_size)
                 row_data.append(fixed_cell)
@@ -277,11 +299,20 @@ class PDFGenerator:
         cell_colors = []
         for row in range(grid_size):
             for col in range(grid_size):
-                ink_value = pattern[row][col] if row < len(pattern) and col < len(pattern[row]) else 0
-                color = INK_COLORS.get(ink_value, INK_COLORS[0])
+                # Note: Bounds checking not needed - validator ensures pattern is grid_size × grid_size
+                ink_value = pattern[row][col]
+
+                # Use dynamic colors if provided, otherwise fall back to static INK_COLORS
+                if material_colors and str(ink_value) in material_colors:
+                    rgb = material_colors[str(ink_value)]
+                    color = colors.Color(rgb['r']/255.0, rgb['g']/255.0, rgb['b']/255.0)
+                else:
+                    color = INK_COLORS.get(ink_value, INK_COLORS[0])
+
                 cell_colors.append(('BACKGROUND', (row, col), (row, col), color))
 
         # Combine all styles into a single TableStyle
+        # IMPORTANT: Order matters - cell backgrounds must come BEFORE grid lines
         all_styles = [
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -289,13 +320,20 @@ class PDFGenerator:
             ('RIGHTPADDING', (0, 0), (-1, -1), 0),
             ('TOPPADDING', (0, 0), (-1, -1), 0),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-            ('GRIDLINEWIDTH', (0, 0), (-1, -1), 2),                    # 2px border width
-            ('GRIDLINECOLOR', (0, 0), (-1, -1), HexColor('#333333')),  # Dark gray border
             ('BACKGROUND', (0, 0), (-1, -1), HexColor('#1E1E1E')),  # Dark background
         ]
 
-        # Add individual cell colors
+        # Add individual cell colors FIRST (before grid lines)
         all_styles.extend(cell_colors)
+
+        # Add grid lines LAST so they appear on top of cell backgrounds
+        all_styles.extend([
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),  # 1pt black grid lines
+            ('LINEBELOW', (0, 0), (-1, -1), 1, colors.black),  # Ensure bottom lines
+            ('LINEABOVE', (0, 0), (-1, -1), 1, colors.black),  # Ensure top lines
+            ('LINELEFT', (0, 0), (-1, -1), 1, colors.black),   # Ensure left lines
+            ('LINERIGHT', (0, 0), (-1, -1), 1, colors.black),  # Ensure right lines
+        ])
 
         # Create the table with BOTH colWidths AND rowHeights for SQUARE cells
         grid_table = Table(
@@ -311,6 +349,7 @@ class PDFGenerator:
         """Create a legend showing what each color/ink represents"""
         grid_size = metadata.grid_size
         pattern = metadata.pattern
+        material_colors = metadata.material_colors
 
         # Collect unique ink values used in this pattern
         used_inks = set()
@@ -327,22 +366,32 @@ class PDFGenerator:
         # Create legend data with Paragraph-wrapped text for proper word wrapping
         legend_data = [
             [Paragraph("Ink ID", normal_style), Paragraph("Color", normal_style),
-             Paragraph("Description", normal_style), Paragraph("Purpose", normal_style)]
+             Paragraph("RGB Color", normal_style), Paragraph("Purpose", normal_style)]
         ]
 
         for ink_id in sorted(used_inks):
-            name, hex_color, color_obj = self.ink_names.get(ink_id, ("Unknown", "#000000", colors.black))
+            # Use dynamic material colors if available, otherwise fallback to hardcoded ink_names
+            if material_colors and str(ink_id) in material_colors:
+                rgb = material_colors[str(ink_id)]
+                color_obj = colors.Color(rgb['r']/255.0, rgb['g']/255.0, rgb['b']/255.0)
+                rgb_str = f"RGB({rgb['r']}, {rgb['g']}, {rgb['b']})"
+                name = f"Ink {ink_id}"
+                purpose = "Custom material ink"
+            else:
+                # Fallback to hardcoded ink_names
+                name, hex_color, color_obj = self.ink_names.get(ink_id, ("Unknown", "#000000", colors.black))
+                rgb_str = hex_color
 
-            # Determine purpose based on ink ID
-            purposes = {
-                0: "Data High - Critical information (reacts at 75°C)",
-                1: "Protected/Fake - Security pattern (reacts at 75°C)",
-                2: "Data Low - Standard information (reacts at 55°C)",
-                3: "Protected/Fake - Security pattern (reacts at 55°C)",
-                4: "Metadata - Labels and tracking info",
-                5: "Special - Custom applications"
-            }
-            purpose = purposes.get(ink_id, "Custom usage")
+                # Determine purpose based on ink ID
+                purposes = {
+                    0: "Data High - Critical information (reacts at 75°C)",
+                    1: "Protected/Fake - Security pattern (reacts at 75°C)",
+                    2: "Data Low - Standard information (reacts at 55°C)",
+                    3: "Protected/Fake - Security pattern (reacts at 55°C)",
+                    4: "Metadata - Labels and tracking info",
+                    5: "Special - Custom applications"
+                }
+                purpose = purposes.get(ink_id, "Custom usage")
 
             # Create colored style for each ink's color swatch
             color_style = ParagraphStyle(
@@ -357,7 +406,7 @@ class PDFGenerator:
             legend_data.append([
                 str(ink_id),
                 Paragraph('■', color_style),  # Colored square using styled Paragraph
-                Paragraph(name, normal_style),
+                Paragraph(rgb_str, normal_style),
                 Paragraph(purpose, normal_style)
             ])
 
@@ -385,7 +434,6 @@ class PDFGenerator:
         legend_title = Paragraph("Material/Legend Reference", styles['Heading3'])
         story_parts = [legend_title, Spacer(0.1*inch, 0.1*inch), legend_table]
 
-        from reportlab.platypus import KeepTogether
         return KeepTogether(story_parts)
 
 # Global PDF generator instance
@@ -444,7 +492,6 @@ async def generate_pdf(request: PDFGenerationRequest):
         )
 
     except Exception as e:
-        import traceback
         logger.error(f"Error generating PDF: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         return PDFGenerationResponse(

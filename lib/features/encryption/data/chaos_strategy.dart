@@ -7,7 +7,15 @@ class ChaosLogisticStrategy implements EncryptionStrategy {
   String get name => "Logistic Map (Enhanced Chaos)";
 
   @override
-  List<int> encrypt(String input, int length) {
+  List<int> encrypt(String input, int length, [int numInks = 5]) {
+    // Handle empty input gracefully
+    if (input.isEmpty) {
+      if (numInks < 2) numInks = 2;
+      if (numInks > 10) numInks = 10;
+      final maxInkId = numInks - 1;
+      return List.filled(length, maxInkId);
+    }
+
     // 1. Generate MAXIMUM entropy seed from input
     final bytes = utf8.encode(input);
     double x = 0.6123456789; // Golden ratio conjugate
@@ -36,6 +44,11 @@ class ChaosLogisticStrategy implements EncryptionStrategy {
     const double r = 3.999999999; // Parameter near chaos threshold
     List<int> grid = [];
 
+    // Validate numInks
+    if (numInks < 2) numInks = 2; // Minimum 2 inks
+    if (numInks > 10) numInks = 10; // Maximum 10 inks
+    final maxInkId = numInks - 1;
+
     // 2. Generate TRULY chaotic stream with maximum sensitivity
     for (int i = 0; i < length; i++) {
       // Input-sensitive perturbation at EACH step
@@ -59,16 +72,16 @@ class ChaosLogisticStrategy implements EncryptionStrategy {
         if (x > 1.0) x = 0.999;
       }
 
-      // EXTREME input coupling for quantization
-      int inkId = (x * 5).floor();
-      if (inkId > 4) inkId = 4;
+      // EXTREME input coupling for quantization - USE DYNAMIC numInks
+      int inkId = (x * numInks).floor();
+      if (inkId > maxInkId) inkId = maxInkId;
 
       // Add chaotic position factors
       int positionFactor1 = ((i * i * 7) + (bytes[i % bytes.length] * (i + 3))) % 13;
       int positionFactor2 = ((i * i * i * 13) + (hash >> (i % 8)) + bytes[(i * 2) % bytes.length]) % 17;
       positionFactor2 ^= (hash2 >> (i % 4)) & 15;
 
-      inkId = (inkId + positionFactor1 + positionFactor2) % 5;
+      inkId = (inkId + positionFactor1 + positionFactor2) % numInks;
 
       // Re-seed frequently
       if (i > 0 && i % 13 == 0) {
@@ -78,7 +91,7 @@ class ChaosLogisticStrategy implements EncryptionStrategy {
 
       // Add final input modification
       int finalMod = (bytes[(i + bytes.length) % bytes.length] + hash + hash2 + i) % 23;
-      inkId = (inkId + finalMod) % 5;
+      inkId = (inkId + finalMod) % numInks;
 
       grid.add(inkId);
     }

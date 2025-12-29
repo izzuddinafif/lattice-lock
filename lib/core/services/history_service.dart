@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'hive_storage_service.dart';
 
 /// Model for stored pattern history entry

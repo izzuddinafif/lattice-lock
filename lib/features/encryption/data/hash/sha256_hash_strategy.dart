@@ -11,14 +11,19 @@ class SHA256HashStrategy implements EncryptionStrategy {
   String get name => 'SHA-256 Hash (Optimized)';
 
   @override
-  List<int> encrypt(String input, int length) {
-    if (input.isEmpty) return List.filled(length, 4);
+  List<int> encrypt(String input, int length, [int numInks = 5]) {
+    // Validate numInks
+    if (numInks < 2) numInks = 2;
+    if (numInks > 10) numInks = 10;
+    final maxInkId = numInks - 1;
+
+    if (input.isEmpty) return List.filled(length, maxInkId);
 
     // Generate SHA-256 hash using optimized approach
     final bytes = utf8.encode(input);
     final digest = sha256.convert(bytes);
 
-    // Convert hash to list of integers 0-4
+    // Convert hash to list of integers using dynamic numInks
     List<int> pattern = [];
     for (int i = 0; i < digest.bytes.length; i += 4) {
       // Combine 4 bytes to create a more uniform distribution
@@ -27,8 +32,8 @@ class SHA256HashStrategy implements EncryptionStrategy {
         combined = (combined << 8) | digest.bytes[i + j];
       }
 
-      // Map to 0-4 range
-      int value = combined % 5;
+      // Map to 0 to maxInkId range
+      int value = combined % numInks;
       pattern.add(value);
     }
 
@@ -36,7 +41,7 @@ class SHA256HashStrategy implements EncryptionStrategy {
     while (pattern.length < length) {
       // Use a simple deterministic method to extend the pattern
       int lastValue = pattern[pattern.length - 1];
-      int newValue = (lastValue + pattern[pattern.length % pattern.length]) % 5;
+      int newValue = (lastValue + pattern[pattern.length % pattern.length]) % numInks;
       pattern.add(newValue);
     }
 

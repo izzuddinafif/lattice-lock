@@ -12,6 +12,7 @@ class PDFMetadata {
   final List<List<int>> pattern;
   final int gridSize; // Explicit grid size for backend
   final Map<String, dynamic> additionalData;
+  final Map<int, Map<String, int>>? materialColors; // ink ID -> {r, g, b}
 
   PDFMetadata({
     required this.filename,
@@ -23,6 +24,7 @@ class PDFMetadata {
     required this.pattern,
     required this.gridSize,
     this.additionalData = const {},
+    this.materialColors,
   });
 
   // Helper getters for backward compatibility
