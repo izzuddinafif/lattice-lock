@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        - PDF_API_BASE_URL=http://pdf-backend:8000
+        - PDF_API_BASE_URL=
     container_name: latticelock-web
     ports:
       - "3000:80"
