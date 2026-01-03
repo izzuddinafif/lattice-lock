@@ -32,8 +32,8 @@ class CustomInkDefinition extends HiveObject {
 
   /// Set the Color object and store its value
   set color(Color value) {
-    colorValue = value.value;
-    hexValue = value.value & 0xFFFFFFFF; // Ensure proper hex format
+    colorValue = value.toARGB32();
+    hexValue = value.toARGB32(); // Ensure proper hex format
   }
 
   /// Get the InkRole from stored role name
@@ -72,7 +72,7 @@ class CustomInkDefinition extends HiveObject {
     if (color != null) {
       copy.color = color;
     } else {
-      copy.colorValue = this.colorValue;
+      copy.colorValue = colorValue;
     }
 
     return copy;

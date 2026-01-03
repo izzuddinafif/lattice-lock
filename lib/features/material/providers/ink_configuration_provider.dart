@@ -205,7 +205,7 @@ class InkConfigurationNotifier extends StateNotifier<InkConfigurationState> {
       ..code = '${(index + 1) * 10}R'
       ..color = defaultColors[index % defaultColors.length]
       ..role = InkRole.dataHigh
-      ..hexValue = defaultColors[index % defaultColors.length].value;
+      ..hexValue = defaultColors[index % defaultColors.length].toARGB32();
   }
 
   /// Get validation error message
@@ -252,7 +252,7 @@ class CombinedInkConfig {
 
       if (profileInk.name != configInk.name ||
           profileInk.code != configInk.code ||
-          profileInk.color.value != configInk.color.value) {
+          profileInk.color.toARGB32() != configInk.color.toARGB32()) {
         return true;
       }
     }

@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import '../../encryption/domain/encryption_strategy.dart';
-import '../../encryption/data/chaos_strategy.dart';
-import '../../encryption/data/tent_map_strategy.dart';
-import '../../encryption/data/arnolds_cat_map_strategy.dart';
+import '../../encryption/data/hybrid_chaotic_strategy.dart';
 import '../../material/models/ink_profile.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/native_crypto_service.dart';
@@ -11,7 +9,7 @@ import '../../../core/services/pdf_service.dart';
 import '../../../core/services/history_service.dart';
 
 class GeneratorUseCase {
-  EncryptionStrategy _encryptionStrategy = ChaosLogisticStrategy(); // Default strategy
+  EncryptionStrategy _encryptionStrategy = HybridChaoticStrategy(); // Default strategy
   bool _useNativeCrypto = false; // Flag to use native crypto for sensitive operations
   String? _currentKeyId; // Current key ID for encryption
 
@@ -50,9 +48,9 @@ class GeneratorUseCase {
           'isNativeCrypto': true,
         };
       } else {
-        // Fallback to chaos logistic map for backwards compatibility
-        final chaosStrategy = ChaosLogisticStrategy();
-        final encryptedPattern = chaosStrategy.encrypt(data, data.length);
+        // Fallback to hybrid chaotic strategy for backwards compatibility
+        final hybridStrategy = HybridChaoticStrategy();
+        final encryptedPattern = hybridStrategy.encrypt(data, data.length);
         return {
           'pattern': encryptedPattern,
           'isNativeCrypto': false,
@@ -111,20 +109,9 @@ class GeneratorUseCase {
   }
 
   void setAlgorithm(String algorithm) {
-    switch (algorithm) {
-      case 'chaos_logistic':
-        _encryptionStrategy = ChaosLogisticStrategy();
-        break;
-      case 'chaos_tent':
-        _encryptionStrategy = TentMapStrategy();
-        break;
-      case 'chaos_arnolds_cat':
-        _encryptionStrategy = ArnoldsCatMapStrategy();
-        break;
-      default:
-        _encryptionStrategy = ChaosLogisticStrategy();
-        break;
-    }
+    // All algorithms now use the Hybrid Chaotic Strategy (reversible encryption)
+    // The algorithm parameter is kept for backward compatibility but doesn't change behavior
+    _encryptionStrategy = HybridChaoticStrategy();
   }
 
   Future<List<int>> generatePattern({

@@ -382,60 +382,22 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                       value: state.selectedAlgorithm,
                       isExpanded: true,
                       items: [
-                        // Chaos Algorithms Category
+                        // Hybrid Chaotic Encryption (Reversible)
                         DropdownMenuItem(
-                          value: "chaos_logistic",
+                          value: "chaos_logistic", // Keep old value for compatibility
                           child: Row(
                             children: [
-                              Icon(Icons.timeline, size: 20, color: Colors.deepPurple),
+                              Icon(Icons.lock_reset, size: 20, color: Colors.blue.shade700),
                               const SizedBox(width: 12),
-                              const Expanded(child: Text("Chaos Logistic Map")),
+                              const Expanded(child: Text("Hybrid Chaotic Map")),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.deepPurple.withValues(alpha: 0.1),
+                                  color: Colors.blue.shade700.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.deepPurple),
+                                  border: Border.all(color: Colors.blue.shade700),
                                 ),
-                                child: const Text("Chaos", style: TextStyle(fontSize: 10, color: Colors.deepPurple)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: "chaos_tent",
-                          child: Row(
-                            children: [
-                              Icon(Icons.show_chart, size: 20, color: Colors.deepOrange),
-                              const SizedBox(width: 12),
-                              const Expanded(child: Text("Chaos Tent Map")),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.deepOrange.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.deepOrange),
-                                ),
-                                child: const Text("Chaos", style: TextStyle(fontSize: 10, color: Colors.deepOrange)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: "chaos_arnolds_cat",
-                          child: Row(
-                            children: [
-                              Icon(Icons.grid_4x4, size: 20, color: Colors.teal),
-                              const SizedBox(width: 12),
-                              const Expanded(child: Text("Arnold's Cat Map")),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.teal.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.teal),
-                                ),
-                                child: const Text("Chaos", style: TextStyle(fontSize: 10, color: Colors.teal)),
+                                child: Text("Reversible", style: TextStyle(fontSize: 10, color: Colors.blue.shade700)),
                               ),
                             ],
                           ),
@@ -1253,60 +1215,22 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                       value: state.selectedAlgorithm,
                       isExpanded: true,
                       items: [
-                        // Chaos Algorithms Category
+                        // Hybrid Chaotic Encryption (Reversible)
                         DropdownMenuItem(
-                          value: "chaos_logistic",
+                          value: "chaos_logistic", // Keep old value for compatibility
                           child: Row(
                             children: [
-                              Icon(Icons.timeline, size: 20, color: Colors.deepPurple),
+                              Icon(Icons.lock_reset, size: 20, color: Colors.blue.shade700),
                               const SizedBox(width: 12),
-                              const Expanded(child: Text("Chaos Logistic Map")),
+                              const Expanded(child: Text("Hybrid Chaotic Map")),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.deepPurple.withValues(alpha: 0.1),
+                                  color: Colors.blue.shade700.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.deepPurple),
+                                  border: Border.all(color: Colors.blue.shade700),
                                 ),
-                                child: const Text("Chaos", style: TextStyle(fontSize: 10, color: Colors.deepPurple)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: "chaos_tent",
-                          child: Row(
-                            children: [
-                              Icon(Icons.show_chart, size: 20, color: Colors.deepOrange),
-                              const SizedBox(width: 12),
-                              const Expanded(child: Text("Chaos Tent Map")),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.deepOrange.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.deepOrange),
-                                ),
-                                child: const Text("Chaos", style: TextStyle(fontSize: 10, color: Colors.deepOrange)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: "chaos_arnolds_cat",
-                          child: Row(
-                            children: [
-                              Icon(Icons.grid_4x4, size: 20, color: Colors.teal),
-                              const SizedBox(width: 12),
-                              const Expanded(child: Text("Arnold's Cat Map")),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.teal.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.teal),
-                                ),
-                                child: const Text("Chaos", style: TextStyle(fontSize: 10, color: Colors.teal)),
+                                child: Text("Reversible", style: TextStyle(fontSize: 10, color: Colors.blue.shade700)),
                               ),
                             ],
                           ),
