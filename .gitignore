@@ -55,3 +55,6 @@ app.*.map.json
 .env.*
 !.env.*.example
 claudedocs/
+
+# Serena MCP memories
+.serena/memories/
