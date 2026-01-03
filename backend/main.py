@@ -128,8 +128,8 @@ class PDFMetadata(BaseModel):
     @field_validator('grid_size')
     @classmethod
     def validate_grid_size(cls, v):
-        if v < 2 or v > 32:
-            raise ValueError("Grid size must be between 2 and 32")
+        if v < 3 or v > 32:
+            raise ValueError("Grid size must be between 3 and 32")
         return v
 
 class PDFGenerationRequest(BaseModel):

@@ -18,12 +18,6 @@ class GridConfig {
   /// Grid configuration presets for different user needs
   static const List<GridConfig> presets = [
     GridConfig(
-      size: 2,
-      displayName: '2×2',
-      description: 'Quick proof of concept',
-      useCase: 'PoC',
-    ),
-    GridConfig(
       size: 3,
       displayName: '3×3',
       description: 'Simple demonstration',
@@ -96,7 +90,7 @@ class GridConfig {
     switch (useCase.toLowerCase()) {
       case 'poc':
       case 'demo':
-        return presets.where((config) => config.size <= 4).toList();
+        return presets.where((config) => config.size <= 3).toList();
       case 'education':
       case 'testing':
         return presets.where((config) => config.size <= 6).toList();
@@ -124,7 +118,7 @@ class GridConfig {
 
   /// Check if grid size is valid
   static bool isValidSize(int size) {
-    return size >= 2 && size <= 32 && size == size.round();
+    return size >= 3 && size <= 32 && size == size.round();
   }
 
   @override

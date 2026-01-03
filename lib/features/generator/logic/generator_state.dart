@@ -65,7 +65,7 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
     // Find default 8x8 grid config from presets
     final defaultGridConfig = GridConfig.presets.firstWhere(
       (config) => config.size == 8,
-      orElse: () => GridConfig.presets.first, // Fallback to 2x2 if 8x8 not found
+      orElse: () => GridConfig.presets.first, // Fallback to 3x3 if 8x8 not found
     );
 
     // CRITICAL: Don't read materialProfileProvider here - it might not be loaded yet
@@ -216,9 +216,9 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
       return;
     }
 
-    if (actualGridSize < 2 || actualGridSize > 32) {
+    if (actualGridSize < 3 || actualGridSize > 32) {
       state = AsyncValue.data(currentState.copyWith(
-        error: 'Invalid grid size: $actualGridSize (must be between 2 and 32)'
+        error: 'Invalid grid size: $actualGridSize (must be between 3 and 32)'
       ));
       return;
     }
