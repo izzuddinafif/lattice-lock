@@ -1,5 +1,6 @@
 import '../domain/encryption_strategy.dart';
 import 'dart:convert';
+import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:meta/meta.dart';
 import 'hybrid/permutation_stage.dart';
@@ -35,14 +36,20 @@ class HybridChaoticStrategy implements EncryptionStrategy {
     if (numInks < 2) numInks = 2;
     if (numInks > 10) numInks = 10;
 
+    // Calculate grid size from length (must be perfect square)
+    final gridSize = sqrt(length).round();
+    if (gridSize * gridSize != length) {
+      throw ArgumentError('Length must be a perfect square (got $length, expected ${gridSize * gridSize})');
+    }
+
     // === DERIVE CRYPTOGRAPHIC PARAMETERS ===
     final seed = _hashToSeed(input);
-    final permIterations = _derivePermutationIterations(seed);
+    final permIterations = _derivePermutationIterations(seed, gridSize);
     final diffSeed = _deriveDiffusionSeed(seed);
-    final subMultiplier = _deriveSubstitutionMultiplier(seed);
+    final subMultiplier = _deriveSubstitutionMultiplier(seed, gridSize, numInks);
 
-    // === INITIALIZE 8×8 GRID ===
-    var grid = _initializeGrid(input, seed, numInks);
+    // === INITIALIZE GRID ===
+    var grid = _initializeGrid(input, seed, numInks, gridSize);
 
     // === STAGE 1: PERMUTION ===
     grid = _permutation.permute(grid, permIterations);
@@ -80,9 +87,16 @@ class HybridChaoticStrategy implements EncryptionStrategy {
   /// Useful for testing and validation
   List<int> _decryptKnown(List<int> pattern, String originalInput) {
     final seed = _hashToSeed(originalInput);
-    final permIterations = _derivePermutationIterations(seed);
+
+    // Calculate grid size from pattern length
+    final gridSize = sqrt(pattern.length).round();
+
+    // Infer numInks from pattern (max value + 1)
+    final numInks = pattern.reduce((a, b) => a > b ? a : b) + 1;
+
+    final permIterations = _derivePermutationIterations(seed, gridSize);
     final diffSeed = _deriveDiffusionSeed(seed);
-    final subMultiplier = _deriveSubstitutionMultiplier(seed);
+    final subMultiplier = _deriveSubstitutionMultiplier(seed, gridSize, numInks);
 
     var data = List<int>.from(pattern);
 
@@ -123,8 +137,13 @@ class HybridChaoticStrategy implements EncryptionStrategy {
 
   /// Derive permutation iteration count from seed
   /// Use 5-44 iterations to avoid hitting the period (48)
-  int _derivePermutationIterations(BigInt seed) {
-    return ((seed % BigInt.from(40)) + BigInt.from(5)).toInt();
+  /// Derive permutation iteration count from hash
+  /// Dynamic based on grid size to ensure good mixing
+  int _derivePermutationIterations(BigInt seed, int gridSize) {
+    // More iterations for larger grids
+    final baseIterations = ((seed % BigInt.from(40)) + BigInt.from(5)).toInt();
+    final scaleMultiplier = (gridSize / 8).ceil().clamp(1, 4);
+    return baseIterations * scaleMultiplier;
   }
 
   /// Derive diffusion seed from hash
@@ -133,24 +152,26 @@ class HybridChaoticStrategy implements EncryptionStrategy {
   }
 
   /// Derive substitution multiplier from seed
-  int _deriveSubstitutionMultiplier(BigInt seed) {
+  /// Pass gridSize and numInks for documentation purposes (not used in current implementation)
+  int _deriveSubstitutionMultiplier(BigInt seed, int gridSize, int numInks) {
     return _substitution.deriveMultiplier(seed);
   }
 
-  /// Initialize 8×8 grid from input string and seed
-  List<List<int>> _initializeGrid(String input, BigInt seed, int numInks) {
+  /// Initialize grid from input string and seed
+  /// Dynamic grid size based on length parameter
+  List<List<int>> _initializeGrid(String input, BigInt seed, int numInks, int gridSize) {
     final grid = List.generate(
-      PermutationStage.gridSize,
-      (_) => List.filled(PermutationStage.gridSize, 0),
+      gridSize,
+      (_) => List.filled(gridSize, 0),
     );
 
     final bytes = utf8.encode(input);
     BigInt current = seed;
 
-    for (int y = 0; y < PermutationStage.gridSize; y++) {
-      for (int x = 0; x < PermutationStage.gridSize; x++) {
+    for (int y = 0; y < gridSize; y++) {
+      for (int x = 0; x < gridSize; x++) {
         // Use byte value with seed for deterministic initialization
-        int byteIndex = (y * PermutationStage.gridSize + x) % bytes.length;
+        int byteIndex = (y * gridSize + x) % bytes.length;
         int byteValue = bytes[byteIndex];
 
         // Combine seed and byte value
@@ -178,18 +199,20 @@ class HybridChaoticStrategy implements EncryptionStrategy {
   }
 
   /// Reshape 1D array to 2D grid
+  /// Calculate grid size from data length (must be perfect square)
   List<List<int>> _reshapeToGrid(List<int> data) {
-    if (data.length != PermutationStage.gridSize * PermutationStage.gridSize) {
+    final size = sqrt(data.length).round();
+    if (size * size != data.length) {
       throw ArgumentError(
-        'Data length must be ${PermutationStage.gridSize * PermutationStage.gridSize} (8×8 grid)',
+        'Data length must be a perfect square (got $data.length)',
       );
     }
 
     final grid = List.generate(
-      PermutationStage.gridSize,
+      size,
       (y) => List.generate(
-        PermutationStage.gridSize,
-        (x) => data[y * PermutationStage.gridSize + x],
+        size,
+        (x) => data[y * size + x],
       ),
     );
 

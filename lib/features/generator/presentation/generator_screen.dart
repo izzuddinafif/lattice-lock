@@ -479,7 +479,12 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                                 color: _getGridSizeColor(config.useCase),
                               ),
                               const SizedBox(width: 12),
-                              const Expanded(child: Text("Grid Size")),
+                              Expanded(
+                                child: Text(
+                                  config.description,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
@@ -1145,7 +1150,7 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  "${config.size}×${config.size} - ${config.displayName}",
+                                  config.displayName,
                                   style: const TextStyle(fontSize: 14),
                                 ),
                               ),
