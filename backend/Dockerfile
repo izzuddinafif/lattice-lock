@@ -11,18 +11,27 @@ ENV NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512F AVX512CD AVX512VL AVX512BW AVX512DQ
 # Install system dependencies
 # libgl1: OpenGL library required by OpenCV
 # libglib2.0-0: GLib library required by OpenCV
+# build-essential: required for building NumPy from source
 RUN apt-get update && apt-get install -y \
     gcc \
+    g++ \
     curl \
     libgl1 \
     libglib2.0-0 \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies (use pre-built wheels for speed and reliability)
+# Install Python dependencies
+# Build NumPy from source with X86_V2 baseline for maximum CPU compatibility
+# Pre-built wheels from PyPI don't work on all virtualization platforms
+# All other packages use pre-built wheels for speed
 RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir wheel && \
+    pip install --no-cache-dir --no-binary :none: 'numpy>=1.26.3,<2.0' && \
+    pip install --no-cache-dir -r requirements.txt --no-deps && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
