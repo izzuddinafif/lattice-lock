@@ -271,39 +271,8 @@ void main() {
       });
     });
 
-    group('Documentation and Maintainability', () {
-      test('should have clear and descriptive constant names', () {
-        // Constant names should be self-documenting
-        expect('defaultGridSize', contains('default'));
-        expect('defaultGridSize', contains('grid'));
-        expect('minGridSize', contains('min'));
-        expect('maxGridSize', contains('max'));
-        expect('totalInkTypes', contains('total'));
-        expect('pdfOutputFolder', contains('pdf'));
-        expect('defaultEncryptionAlgorithm', contains('default'));
-      });
-
-      test('should follow consistent naming conventions', () {
-        // All constants should follow camelCase convention
-        const constantNames = [
-          'defaultGridSize',
-          'minGridSize',
-          'maxGridSize',
-          'availableGridSizes',
-          'totalInkTypes',
-          'baseUrl',
-          'apiTimeout',
-          'pdfOutputFolder',
-          'colorThreshold',
-          'defaultEncryptionAlgorithm',
-        ];
-
-        for (final name in constantNames) {
-          expect(name, matches(RegExp(r'[a-z]')));
-          expect(name, isNot(contains(RegExp(r'[A-Z]'))));
-        }
-      });
-    });
+    // Removed overly strict naming convention tests that don't reflect Dart standards
+    // Dart constants use camelCase (e.g., defaultGridSize) which is the correct convention
 
     group('Integration Testing Support', () {
       test('should support test scenarios with different grid sizes', () {

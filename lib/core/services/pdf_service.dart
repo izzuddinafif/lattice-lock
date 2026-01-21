@@ -14,6 +14,12 @@ class PDFMetadata {
   final Map<String, dynamic> additionalData;
   final Map<int, Map<String, int>>? materialColors; // ink ID -> {r, g, b}
 
+  // Digital signature fields for verification
+  final String? signature; // Base64-encoded signature
+  final String? patternHash; // SHA-256 hash of pattern
+  final String? manufacturerId; // Manufacturer identifier
+  final int? numInks; // Number of ink types
+
   PDFMetadata({
     required this.filename,
     required this.title,
@@ -25,6 +31,10 @@ class PDFMetadata {
     required this.gridSize,
     this.additionalData = const {},
     this.materialColors,
+    this.signature,
+    this.patternHash,
+    this.manufacturerId,
+    this.numInks,
   });
 
   // Helper getters for backward compatibility
@@ -64,6 +74,9 @@ abstract class PDFService {
 
   /// Download/share PDF using platform-appropriate method
   Future<bool> downloadOrSharePDF(PDFResult pdfResult);
+
+  /// Store pattern in database for scanner verification
+  Future<bool> storePattern(PDFMetadata metadata);
 
   /// Get platform-specific service implementation
   factory PDFService.create() {

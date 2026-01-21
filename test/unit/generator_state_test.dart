@@ -28,7 +28,7 @@ void main() {
     });
 
     test('should create state with custom values', () {
-      final gridConfig = GridConfig.findBySize(2)!;
+      final gridConfig = GridConfig.findBySize(3)!; // Changed from 2 to 3 (minimum size)
 
       final flattenedPattern = [1, 2, 3, 4];
 
@@ -42,7 +42,7 @@ void main() {
         error: 'Test error',
       );
 
-      expect(state.selectedGridConfig.size, 2);
+      expect(state.selectedGridConfig.size, 3); // Changed from 2 to 3
       expect(state.encryptedPattern, equals(flattenedPattern));
       expect(state.inputText, 'TEST-001');
       expect(state.isGenerating, isTrue);

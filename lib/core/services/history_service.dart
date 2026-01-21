@@ -69,13 +69,14 @@ class HistoryFilter {
   });
 
   bool matches(PatternHistoryEntry entry) {
-    if (batchCode != null && !entry.batchCode.toLowerCase().contains(batchCode!.toLowerCase())) {
+    // Treat empty strings the same as null (no filtering applied)
+    if (batchCode != null && batchCode!.isNotEmpty && !entry.batchCode.toLowerCase().contains(batchCode!.toLowerCase())) {
       return false;
     }
-    if (algorithm != null && entry.algorithm != algorithm) {
+    if (algorithm != null && algorithm!.isNotEmpty && entry.algorithm != algorithm) {
       return false;
     }
-    if (materialProfile != null && entry.materialProfile != materialProfile) {
+    if (materialProfile != null && materialProfile!.isNotEmpty && entry.materialProfile != materialProfile) {
       return false;
     }
     if (startDate != null && entry.timestamp.isBefore(startDate!)) {

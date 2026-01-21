@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'features/generator/presentation/generator_screen.dart';
 import 'features/generator/presentation/history_screen.dart';
 import 'features/material/presentation/profile_list_screen.dart';
 import 'features/material/models/custom_ink_profile.dart';
-import 'core/services/crypto_integration_test.dart';
-import 'core/services/native_crypto_service.dart';
+import 'features/scanner/presentation/scanner_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,19 +14,6 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(CustomInkDefinitionAdapter());
   Hive.registerAdapter(CustomMaterialProfileAdapter());
-
-  // Initialize crypto services
-  if (kDebugMode) {
-    try {
-      await NativeCryptoService.initialize();
-
-      // Run integration tests in debug mode
-      final testResults = await CryptoIntegrationTest.runAllTests();
-      CryptoIntegrationTest.printTestResults(testResults);
-    } catch (e) {
-      debugPrint('Failed to initialize crypto services: $e');
-    }
-  }
 
   runApp(
     const ProviderScope(
@@ -76,6 +61,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> _screens = [
     const GeneratorScreen(),
+    const ScannerScreen(),
     const HistoryScreen(),
     const ProfileListScreen(),
   ];
@@ -101,6 +87,10 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Icon(Icons.qr_code_scanner),
             label: 'Generator',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.document_scanner_outlined),
+            label: 'Scanner',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.history),

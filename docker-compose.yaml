@@ -1,10 +1,10 @@
 services:
-  # FastAPI PDF Generation Backend (Primary Service)
-  pdf-backend:
+  # LatticeLock Unified Backend (PDF Generation + Scanner/Pattern Verification)
+  backend:
     build:
       context: backend
       dockerfile: Dockerfile
-    container_name: latticelock-pdf-backend
+    container_name: latticelock-backend
     ports:
       - "8000:8000"
     environment:
@@ -12,6 +12,8 @@ services:
       - PORT=8000
       - DEBUG=false
       - LOG_LEVEL=INFO
+    volumes:
+      - ./backend/latticelock.db:/app/latticelock.db
     restart: unless-stopped
     networks:
       - latticelock-network
@@ -28,12 +30,12 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        - PDF_API_BASE_URL=
+        - PDF_API_BASE_URL=http://backend:8000
     container_name: latticelock-web
     ports:
       - "3000:80"
     depends_on:
-      pdf-backend:
+      backend:
         condition: service_healthy
     restart: unless-stopped
     networks:

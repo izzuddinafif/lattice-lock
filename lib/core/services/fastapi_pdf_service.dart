@@ -7,13 +7,14 @@ import 'pdf_service.dart';
 // Platform-specific imports
 import 'package:path_provider/path_provider.dart';
 
-// Web-only imports
-import 'dart:html' as html;
+// Conditional import for web-specific PDF download
+// Exports web implementation on web, stub implementation otherwise
+import 'pdf_download.dart';
 
 /// FastAPI-based PDF service for professional PDF generation
 class FastApiPDFService implements PDFService {
   static const String _baseUrl = String.fromEnvironment('PDF_API_BASE_URL',
-      defaultValue: 'http://localhost:8001');
+      defaultValue: 'http://localhost:8000');
   static const Duration _timeout = Duration(seconds: 30);
 
   @override
@@ -40,6 +41,20 @@ class FastApiPDFService implements PDFService {
       // Add material_colors if available
       if (materialColorsJson != null) {
         metadataMap['material_colors'] = materialColorsJson;
+      }
+
+      // Add signature fields if available
+      if (metadata.signature != null && metadata.signature!.isNotEmpty) {
+        metadataMap['signature'] = metadata.signature!;
+      }
+      if (metadata.patternHash != null && metadata.patternHash!.isNotEmpty) {
+        metadataMap['pattern_hash'] = metadata.patternHash!;
+      }
+      if (metadata.manufacturerId != null && metadata.manufacturerId!.isNotEmpty) {
+        metadataMap['manufacturer_id'] = metadata.manufacturerId!;
+      }
+      if (metadata.numInks != null) {
+        metadataMap['num_inks'] = metadata.numInks!;
       }
 
       final requestData = {
@@ -99,21 +114,8 @@ class FastApiPDFService implements PDFService {
       }
 
       if (kIsWeb) {
-        // For web, create download using base64 data URL
-        final pdfBase64 = base64Encode(pdfResult.bytes);
-        final dataUrl = 'data:application/pdf;base64,$pdfBase64';
-
-        // Create download link and trigger download
-        final anchor = html.AnchorElement()
-          ..href = dataUrl
-          ..download = pdfResult.metadata.filename
-          ..style.display = 'none';
-
-        html.document.body?.children.add(anchor);
-        anchor.click();
-        anchor.remove();
-
-        return true;
+        // For web, use platform-specific download implementation
+        return await PDFDownloadWeb.downloadPDF(pdfResult.bytes, pdfResult.metadata.filename);
       } else {
         // For mobile/desktop, save to file system
         final directory = await getDownloadsDirectory();
@@ -136,9 +138,25 @@ class FastApiPDFService implements PDFService {
     } else if (Platform.isIOS) {
       // For iOS, use documents directory
       return (await getApplicationDocumentsDirectory()).path;
+    } else if (Platform.isWindows) {
+      // For Windows desktop
+      final userProfile = Platform.environment['USERPROFILE'];
+      if (userProfile != null) {
+        return '$userProfile\\Downloads';
+      }
+      // Fallback
+      return '.\\Downloads';
+    } else if (Platform.isLinux || Platform.isMacOS) {
+      // For Linux/macOS desktop
+      final home = Platform.environment['HOME'];
+      if (home != null) {
+        return '$home/Downloads';
+      }
+      // Fallback
+      return './Downloads';
     } else {
-      // For desktop, use downloads directory
-      return '${Platform.environment['USERPROFILE']}\\Downloads';
+      // Unknown platform - fallback to current directory
+      return '.';
     }
   }
 
@@ -151,6 +169,82 @@ class FastApiPDFService implements PDFService {
 
       return response.statusCode == 200;
     } catch (e) {
+      return false;
+    }
+  }
+
+  /// Store pattern in database for scanner verification
+  Future<bool> storePattern(PDFMetadata metadata) async {
+    try {
+      // Prepare the request data matching the FastAPI backend format
+      final materialColorsJson = metadata.materialColors?.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+
+      // Build metadata map
+      final metadataMap = {
+        'filename': metadata.filename,
+        'title': metadata.title,
+        'batch_code': metadata.batchCode,
+        'algorithm': metadata.algorithm,
+        'material_profile': metadata.materialProfile,
+        'timestamp': metadata.timestamp.toIso8601String(),
+        'pattern': metadata.pattern,
+        'grid_size': metadata.gridSize,
+      };
+
+      // Add optional fields
+      if (materialColorsJson != null) {
+        metadataMap['material_colors'] = materialColorsJson;
+      }
+      if (metadata.signature != null && metadata.signature!.isNotEmpty) {
+        metadataMap['signature'] = metadata.signature!;
+      }
+      if (metadata.patternHash != null && metadata.patternHash!.isNotEmpty) {
+        metadataMap['pattern_hash'] = metadata.patternHash!;
+      }
+      if (metadata.manufacturerId != null && metadata.manufacturerId!.isNotEmpty) {
+        metadataMap['manufacturer_id'] = metadata.manufacturerId!;
+      }
+      if (metadata.numInks != null) {
+        metadataMap['num_inks'] = metadata.numInks!;
+      }
+      if (metadata.additionalData != null) {
+        metadataMap['additional_data'] = metadata.additionalData;
+      }
+
+      final requestData = {
+        'metadata': metadataMap
+      };
+
+      // Make HTTP request to store pattern endpoint
+      final response = await http.post(
+        Uri.parse('$_baseUrl/store-pattern'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(requestData),
+      ).timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+        final success = responseData['success'] as bool? ?? false;
+
+        if (success) {
+          print('✓ Pattern stored in database: ${responseData['uuid']}');
+          return true;
+        } else {
+          print('✗ Failed to store pattern: ${responseData['error']}');
+          return false;
+        }
+      } else {
+        print('✗ HTTP ${response.statusCode} storing pattern: ${response.reasonPhrase}');
+        return false;
+      }
+    } catch (e) {
+      print('✗ Exception storing pattern: $e');
+      // Don't throw - storage failure shouldn't break PDF generation
       return false;
     }
   }

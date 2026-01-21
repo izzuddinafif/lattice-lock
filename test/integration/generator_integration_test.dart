@@ -1,12 +1,16 @@
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latticelock/features/generator/domain/generator_use_case.dart';
 import 'package:latticelock/core/services/pdf_service.dart';
 import 'package:latticelock/core/services/history_service.dart';
 import 'package:latticelock/features/material/models/ink_profile.dart';
 import '../../test/helpers/mock_classes.dart';
+import '../../test/helpers/test_helpers.dart';
+
+// Only run these tests on VM platform (not web) to avoid dart:html compilation issues
+@TestOn('vm')
 
 // Define providers for testing
 final pdfServiceProvider = Provider<PDFService>((ref) {
@@ -18,10 +22,21 @@ final historyServiceProvider = Provider<HistoryService>((ref) {
 });
 
 final generatorUseCaseProvider = Provider<GeneratorUseCase>((ref) {
-  return GeneratorUseCase();
+  return GeneratorUseCase(
+    historyService: ref.read(historyServiceProvider),
+    pdfService: ref.read(pdfServiceProvider),
+  );
 });
 
 void main() {
+  // Initialize Flutter test bindings for Hive
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  // Register fallback values for mocktail
+  registerFallbackValue(TestDataFactory.createTestPDFMetadata());
+  registerFallbackValue(TestDataFactory.createTestPDFResult());
+  registerFallbackValue(TestDataFactory.createTestHistoryEntry());
+
   group('Generator Integration Tests', () {
     late ProviderContainer container;
     late MockPDFService mockPDFService;
@@ -64,9 +79,9 @@ void main() {
         metadata: testMetadata,
       );
 
-      when(mockPDFService.generatePDF(testMetadata))
+      when(() => mockPDFService.generatePDF(any()))
           .thenAnswer((_) async => pdfResult);
-      when(mockPDFService.downloadOrSharePDF(pdfResult))
+      when(() => mockPDFService.downloadOrSharePDF(any()))
           .thenAnswer((_) async => true);
 
       final testHistoryEntry = PatternHistoryEntry(
@@ -79,7 +94,7 @@ void main() {
         pdfPath: 'test.pdf',
       );
 
-      when(mockHistoryService.saveEntry(testHistoryEntry))
+      when(() => mockHistoryService.saveEntry(any()))
           .thenAnswer((_) async {});
 
       final generatorUseCase = container.read(generatorUseCaseProvider);
@@ -103,9 +118,9 @@ void main() {
       expect(pattern, isNotNull);
       expect(pattern.length, 16); // 4x4 grid
 
-      verify(mockPDFService.generatePDF(testMetadata)).called(1);
-      verify(mockPDFService.downloadOrSharePDF(pdfResult)).called(1);
-      verify(mockHistoryService.saveEntry(testHistoryEntry)).called(1);
+      verify(() => mockPDFService.generatePDF(any())).called(1);
+      verify(() => mockPDFService.downloadOrSharePDF(any())).called(1);
+      verify(() => mockHistoryService.saveEntry(any())).called(1);
     });
 
     test('should handle PDF generation failure gracefully', () async {
@@ -124,7 +139,7 @@ void main() {
         gridSize: 2,
       );
 
-      when(mockPDFService.generatePDF(testMetadata))
+      when(() => mockPDFService.generatePDF(any()))
           .thenThrow(PDFServiceException('PDF generation failed'));
 
       final testHistoryEntry = PatternHistoryEntry(
@@ -137,7 +152,7 @@ void main() {
         pdfPath: 'test_fail.pdf',
       );
 
-      when(mockHistoryService.saveEntry(testHistoryEntry))
+      when(() => mockHistoryService.saveEntry(any()))
           .thenAnswer((_) async {});
 
       final generatorUseCase = container.read(generatorUseCaseProvider);
@@ -189,9 +204,9 @@ void main() {
         metadata: testMetadata,
       );
 
-      when(mockPDFService.generatePDF(testMetadata))
+      when(() => mockPDFService.generatePDF(any()))
           .thenAnswer((_) async => pdfResult);
-      when(mockPDFService.downloadOrSharePDF(pdfResult))
+      when(() => mockPDFService.downloadOrSharePDF(any()))
           .thenAnswer((_) async => true);
 
       final testHistoryEntry = PatternHistoryEntry(
@@ -204,7 +219,7 @@ void main() {
         pdfPath: 'test_fail.pdf',
       );
 
-      when(mockHistoryService.saveEntry(testHistoryEntry))
+      when(() => mockHistoryService.saveEntry(any()))
           .thenThrow(Exception('History save failed'));
 
       final generatorUseCase = container.read(generatorUseCaseProvider);
@@ -213,27 +228,27 @@ void main() {
       final pattern = await generatorUseCase.generatePattern(
         inputText: batchCode,
         algorithm: 'chaos_arnolds_cat',
-        gridSize: 2,
+        gridSize: 3,
       );
 
-      // Then try to generate PDF (PDF generation should succeed, history save will fail)
-      try {
-        await generatorUseCase.generatePDF(
+      // Then try to generate PDF (history save will fail, downloadOrSharePDF won't be called)
+      await expectLater(
+        () async => await generatorUseCase.generatePDF(
           pattern: pattern,
           material: material,
           inputText: batchCode,
-          gridSize: 2,
-        );
-      } catch (e) {
-        // Expected due to history service failure
-      }
+          gridSize: 3,
+        ),
+        throwsA(isA<Exception>()),
+      );
 
       // Assert
       expect(pattern, isNotNull);
 
-      verify(mockPDFService.generatePDF(testMetadata)).called(1);
-      verify(mockPDFService.downloadOrSharePDF(pdfResult)).called(1);
-      verify(mockHistoryService.saveEntry(testHistoryEntry)).called(1);
+      // PDF was generated but downloadOrSharePDF was not called due to history save failure
+      verify(() => mockPDFService.generatePDF(any())).called(1);
+      verifyNever(() => mockPDFService.downloadOrSharePDF(any()));
+      verify(() => mockHistoryService.saveEntry(any())).called(1);
     });
 
     test('should generate pattern without PDF when requested', () async {
@@ -250,7 +265,7 @@ void main() {
         pdfPath: 'pattern_only.pdf',
       );
 
-      when(mockHistoryService.saveEntry(testHistoryEntry))
+      when(() => mockHistoryService.saveEntry(any()))
           .thenAnswer((_) async {});
 
       final generatorUseCase = container.read(generatorUseCaseProvider);
@@ -288,9 +303,9 @@ void main() {
       expect(pattern, isNotNull);
       expect(pattern.length, 64); // 8x8 grid
 
-      // Verify all values are 0 or 1 (encrypted pattern values)
+      // Verify all values are valid ink IDs (0-4 for 5 ink types)
       for (final value in pattern) {
-        expect(value, inInclusiveRange(0, 1));
+        expect(value, inInclusiveRange(0, 4));
       }
     });
 

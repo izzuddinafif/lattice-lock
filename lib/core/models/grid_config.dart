@@ -47,42 +47,6 @@ class GridConfig {
       description: 'Standard security pattern',
       useCase: 'Production',
     ),
-    GridConfig(
-      size: 10,
-      displayName: '10×10',
-      description: 'High capacity storage',
-      useCase: 'Enterprise',
-    ),
-    GridConfig(
-      size: 12,
-      displayName: '12×12',
-      description: 'Extended data encoding',
-      useCase: 'Research',
-    ),
-    GridConfig(
-      size: 16,
-      displayName: '16×16',
-      description: 'Professional grade',
-      useCase: 'Professional',
-    ),
-    GridConfig(
-      size: 20,
-      displayName: '20×20',
-      description: 'Large scale applications',
-      useCase: 'Industrial',
-    ),
-    GridConfig(
-      size: 24,
-      displayName: '24×24',
-      description: 'Maximum security',
-      useCase: 'High Security',
-    ),
-    GridConfig(
-      size: 32,
-      displayName: '32×32',
-      description: 'Scientific research',
-      useCase: 'Scientific',
-    ),
   ];
 
   /// Get recommended grid configs based on use case
@@ -95,13 +59,13 @@ class GridConfig {
       case 'testing':
         return presets.where((config) => config.size <= 6).toList();
       case 'advanced':
-        return presets.where((config) => config.size >= 6 && config.size <= 12).toList();
+        return presets.where((config) => config.size >= 6 && config.size <= 8).toList();
       case 'professional':
       case 'enterprise':
-        return presets.where((config) => config.size >= 8 && config.size <= 20).toList();
+        return presets.where((config) => config.size >= 8).toList();
       case 'scientific':
       case 'research':
-        return presets.where((config) => config.size >= 16).toList();
+        return presets.where((config) => config.size >= 8).toList();
       default:
         return presets; // Return all if no specific use case
     }
@@ -118,7 +82,7 @@ class GridConfig {
 
   /// Check if grid size is valid
   static bool isValidSize(int size) {
-    return size >= 3 && size <= 32 && size == size.round();
+    return size >= 3 && size <= 8 && size == size.round();
   }
 
   @override

@@ -4,9 +4,13 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
+# libgl1: OpenGL library required by OpenCV
+# libglib2.0-0: GLib library required by OpenCV
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
+    libgl1 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching

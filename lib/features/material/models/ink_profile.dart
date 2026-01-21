@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 enum InkRole { dataHigh, dataLow, fake, metadata }
 
 class InkDefinition {
-  final int id;           // 0-4
+  final int id;           // 0-2 (3-color system)
   final String name;      // e.g., "75°C (Reactive)"
   final String label;     // Simbol di PDF (e.g., "75C")
   final Color visualColor; // Warna visual di layar HP (Cyan/Blue)
@@ -56,15 +56,13 @@ class MaterialProfile {
     return true;
   }
 
-  // Profil Default sesuai Paper Paundra
+  // Profil Default sesuai Paper Paundra - 3 Color System
   static const MaterialProfile standardSet = MaterialProfile(
-    name: "Standard Set A (Le Chatelier)",
+    name: "Standard Set (Le Chatelier)",
     inks: [
       InkDefinition(id: 0, name: "75°C Reactive", label: "75R", visualColor: Colors.cyanAccent, role: InkRole.dataHigh),
-      InkDefinition(id: 1, name: "75°C Protected", label: "75P", visualColor: Colors.cyan, role: InkRole.fake),
-      InkDefinition(id: 2, name: "55°C Reactive", label: "55R", visualColor: Colors.tealAccent, role: InkRole.dataLow),
-      InkDefinition(id: 3, name: "55°C Protected", label: "55P", visualColor: Colors.teal, role: InkRole.fake),
-      InkDefinition(id: 4, name: "35°C Marker", label: "35M", visualColor: Colors.blue, role: InkRole.metadata),
+      InkDefinition(id: 1, name: "55°C Reactive", label: "55R", visualColor: Colors.cyan, role: InkRole.dataLow),
+      InkDefinition(id: 2, name: "35°C Marker", label: "35M", visualColor: Colors.tealAccent, role: InkRole.metadata),
     ],
   );
 }

@@ -6,7 +6,7 @@ import '../models/ink_profile.dart';
 import '../providers/ink_configuration_provider.dart';
 import '../providers/material_profile_provider.dart';
 
-/// Screen for configuring custom material profiles with dynamic ink count
+/// Screen for configuring custom material profiles - 3 Color System
 class InkConfigurationScreen extends ConsumerStatefulWidget {
   final String? profileId;
 
@@ -51,8 +51,9 @@ class _InkConfigurationScreenState
       final config = ref.read(inkConfigurationProvider);
       if (config.inks.isEmpty) {
         // Delay provider modification until after widget tree is built
+        // Initialize with 3 inks (fixed 3-color system)
         Future.microtask(() {
-          ref.read(inkConfigurationProvider.notifier).setInkCount(5);
+          ref.read(inkConfigurationProvider.notifier).setInkCount(3);
         });
       }
     }
@@ -238,21 +239,17 @@ class _InkConfigurationScreenState
           ),
           const SizedBox(height: 24),
 
-          // Ink Count Selector
+          // Fixed 3-color system info
           Text(
-            'Number of Inks: ${config.inkCount}',
+            'Number of Inks: 3 (Fixed)',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 8),
-          Slider(
-            value: config.inkCount.toDouble(),
-            min: 3,
-            max: 10,
-            divisions: 7,
-            label: '${config.inkCount}',
-            onChanged: (value) {
-              ref.read(inkConfigurationProvider.notifier).setInkCount(value.toInt());
-            },
+          Text(
+            'The system uses a fixed 3-color configuration for deterministic pattern generation.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey.shade600,
+            ),
           ),
           const SizedBox(height: 24),
 

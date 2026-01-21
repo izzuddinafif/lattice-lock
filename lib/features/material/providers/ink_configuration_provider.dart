@@ -51,10 +51,10 @@ class InkConfigurationNotifier extends StateNotifier<InkConfigurationState> {
 
   /// Set the number of inks (generates default inks)
   void setInkCount(int count) {
-    if (count < 3 || count > 10) {
+    if (count < 3 || count > 5) {
       state = state.copyWith(
         isValid: false,
-        validationError: 'Ink count must be between 3 and 10',
+        validationError: 'Ink count must be between 3 and 5',
       );
       return;
     }
@@ -142,7 +142,7 @@ class InkConfigurationNotifier extends StateNotifier<InkConfigurationState> {
 
   /// Validate all inks
   bool _validateInks(List<CustomInkDefinition> inks) {
-    if (inks.length < 3 || inks.length > 10) {
+    if (inks.length < 3 || inks.length > 5) {
       return false;
     }
 

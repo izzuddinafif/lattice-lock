@@ -1,18 +1,10 @@
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:latticelock/core/services/pdf_service.dart';
 import 'package:latticelock/core/services/history_service.dart';
 import 'package:latticelock/features/material/models/ink_profile.dart';
 import 'mock_classes.dart';
-
-// Generate mocks
-@GenerateMocks([
-  PDFService,
-  HistoryService,
-])
-void main() {}
 
 /// Test utilities for creating test data
 class TestDataFactory {
@@ -49,7 +41,9 @@ class TestDataFactory {
     String? error,
   }) {
     return PDFResult(
-      bytes: bytes ?? Uint8List.fromList([1, 2, 3, 4]),
+      bytes: success
+          ? (bytes ?? Uint8List.fromList([1, 2, 3, 4]))
+          : Uint8List(0), // Empty bytes for error results
       metadata: metadata ?? createTestPDFMetadata(),
       success: success,
       error: error,
@@ -182,27 +176,22 @@ class TestAssertions {
 class MockUtilities {
   /// Setup mock PDF service for successful generation
   static void setupMockPDFServiceSuccess(MockPDFService mockPdfService) {
-    final testMetadata = TestDataFactory.createTestPDFMetadata();
-    final testResult = TestDataFactory.createTestPDFResult(metadata: testMetadata);
-
-    when(mockPdfService.generatePDF(testMetadata))
-        .thenAnswer((_) async => testResult);
-    when(mockPdfService.downloadOrSharePDF(testResult))
+    when(() => mockPdfService.generatePDF(any()))
+        .thenAnswer((_) async => TestDataFactory.createTestPDFResult());
+    when(() => mockPdfService.downloadOrSharePDF(any()))
         .thenAnswer((_) async => true);
   }
 
   /// Setup mock PDF service for failure
   static void setupMockPDFServiceFailure(MockPDFService mockPdfService, {String error = 'Test error'}) {
-    final testMetadata = TestDataFactory.createTestPDFMetadata();
     final testResult = TestDataFactory.createTestPDFResult(
-      metadata: testMetadata,
       success: false,
       error: error,
     );
 
-    when(mockPdfService.generatePDF(testMetadata))
+    when(() => mockPdfService.generatePDF(any()))
         .thenAnswer((_) async => testResult);
-    when(mockPdfService.downloadOrSharePDF(testResult))
+    when(() => mockPdfService.downloadOrSharePDF(any()))
         .thenAnswer((_) async => false);
   }
 
@@ -216,28 +205,28 @@ class MockUtilities {
     final testFilter = TestDataFactory.createTestHistoryFilter();
 
     if (shouldThrow) {
-      when(mockHistoryService.saveEntry(testEntry))
+      when(() => mockHistoryService.saveEntry(any()))
           .thenThrow(Exception('Test save error'));
-      when(mockHistoryService.getAllEntries())
+      when(() => mockHistoryService.getAllEntries())
           .thenThrow(Exception('Test load error'));
-      when(mockHistoryService.getEntry('test-id'))
+      when(() => mockHistoryService.getEntry('test-id'))
           .thenThrow(Exception('Test get error'));
     } else {
-      when(mockHistoryService.saveEntry(testEntry))
+      when(() => mockHistoryService.saveEntry(any()))
           .thenAnswer((_) async {});
-      when(mockHistoryService.getAllEntries())
+      when(() => mockHistoryService.getAllEntries())
           .thenAnswer((_) async => testEntries);
-      when(mockHistoryService.getFilteredEntries(testFilter))
+      when(() => mockHistoryService.getFilteredEntries(testFilter))
           .thenAnswer((_) async => testEntries);
-      when(mockHistoryService.getEntry('test-id'))
+      when(() => mockHistoryService.getEntry('test-id'))
           .thenAnswer((_) async => testEntry);
-      when(mockHistoryService.searchEntries('test'))
+      when(() => mockHistoryService.searchEntries('test'))
           .thenAnswer((_) async => testEntries);
-      when(mockHistoryService.deleteEntry('test-id'))
+      when(() => mockHistoryService.deleteEntry('test-id'))
           .thenAnswer((_) async {});
-      when(mockHistoryService.clearAll())
+      when(() => mockHistoryService.clearAll())
           .thenAnswer((_) async {});
-      when(mockHistoryService.getStatistics())
+      when(() => mockHistoryService.getStatistics())
           .thenAnswer((_) async => {'total': testEntries.length});
     }
   }

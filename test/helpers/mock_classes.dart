@@ -1,4 +1,4 @@
-import 'package:mockito/mockito.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:latticelock/core/services/pdf_service.dart';
 import 'package:latticelock/core/services/history_service.dart';
 // import 'package:latticelock/core/services/native_crypto_service.dart'; // Unused for now

@@ -127,11 +127,11 @@ class CustomMaterialProfile extends HiveObject {
 
   CustomMaterialProfile();
 
-  /// Create standard profile as custom profile
+  /// Create standard profile as custom profile - 3 Color System
   static CustomMaterialProfile createStandardProfile() {
     final profile = CustomMaterialProfile()
       ..id = 'standard'
-      ..name = 'Standard Set (Default)'
+      ..name = 'Standard Set (Le Chatelier)'
       ..isActive = true
       ..createdAt = DateTime.now()
       ..modifiedAt = DateTime.now();
@@ -146,32 +146,18 @@ class CustomMaterialProfile extends HiveObject {
         ..hexValue = 0xFF00E5FF,
       CustomInkDefinition()
         ..id = 'ink_1'
-        ..name = '75°C Protected'
-        ..code = '75P'
+        ..name = '55°C Reactive'
+        ..code = '55R'
         ..color = const Color(0xFF00BCD4)
-        ..role = InkRole.fake
+        ..role = InkRole.dataLow
         ..hexValue = 0xFF00BCD4,
       CustomInkDefinition()
         ..id = 'ink_2'
-        ..name = '55°C Reactive'
-        ..code = '55R'
-        ..color = const Color(0xFF1DE9B6)
-        ..role = InkRole.dataLow
-        ..hexValue = 0xFF1DE9B6,
-      CustomInkDefinition()
-        ..id = 'ink_3'
-        ..name = '55°C Protected'
-        ..code = '55P'
-        ..color = const Color(0xFF009688)
-        ..role = InkRole.fake
-        ..hexValue = 0xFF009688,
-      CustomInkDefinition()
-        ..id = 'ink_4'
         ..name = '35°C Marker'
         ..code = '35M'
-        ..color = const Color(0xFF2196F3)
+        ..color = const Color(0xFF1DE9B6)
         ..role = InkRole.metadata
-        ..hexValue = 0xFF2196F3,
+        ..hexValue = 0xFF1DE9B6,
     ];
 
     return profile;

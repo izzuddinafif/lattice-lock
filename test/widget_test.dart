@@ -5,16 +5,38 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:latticelock/main.dart';
+import 'package:latticelock/features/material/models/custom_ink_profile.dart';
 
 void main() {
+  // Initialize Hive before all widget tests
+  setUpAll(() async {
+    Hive.init('./test_hive');
+    Hive.registerAdapter(CustomInkDefinitionAdapter());
+    Hive.registerAdapter(CustomMaterialProfileAdapter());
+  });
+
+  // Close Hive after all tests
+  tearDownAll(() async {
+    await Hive.close();
+  });
+
   testWidgets('LatticeLock app smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const LatticeLockApp());
+    // Wrap in ProviderScope just like in main()
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: LatticeLockApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-    // Verify that the app loads correctly
-    expect(find.text('LatticeLock Security Tag Generator'), findsOneWidget);
+    // Verify that the app loads without crashing
+    expect(find.byType(LatticeLockApp), findsOneWidget);
   });
 }

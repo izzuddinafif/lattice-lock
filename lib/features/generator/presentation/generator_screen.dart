@@ -382,7 +382,7 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                       value: state.selectedAlgorithm,
                       isExpanded: true,
                       items: [
-                        // Hybrid Chaotic Encryption (Reversible)
+                        // Hybrid Chaotic Encryption (Hash Function)
                         DropdownMenuItem(
                           value: "chaos_logistic", // Keep old value for compatibility
                           child: Row(
@@ -390,15 +390,6 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                               Icon(Icons.lock_reset, size: 20, color: Colors.blue.shade700),
                               const SizedBox(width: 12),
                               const Expanded(child: Text("Hybrid Chaotic Map")),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade700.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.blue.shade700),
-                                ),
-                                child: Text("Reversible", style: TextStyle(fontSize: 10, color: Colors.blue.shade700)),
-                              ),
                             ],
                           ),
                         ),
@@ -1220,7 +1211,7 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                       value: state.selectedAlgorithm,
                       isExpanded: true,
                       items: [
-                        // Hybrid Chaotic Encryption (Reversible)
+                        // Hybrid Chaotic Encryption (Hash Function)
                         DropdownMenuItem(
                           value: "chaos_logistic", // Keep old value for compatibility
                           child: Row(
@@ -1228,15 +1219,6 @@ class _GeneratorScreenState extends ConsumerState<GeneratorScreen> {
                               Icon(Icons.lock_reset, size: 20, color: Colors.blue.shade700),
                               const SizedBox(width: 12),
                               const Expanded(child: Text("Hybrid Chaotic Map")),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade700.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.blue.shade700),
-                                ),
-                                child: Text("Reversible", style: TextStyle(fontSize: 10, color: Colors.blue.shade700)),
-                              ),
                             ],
                           ),
                         ),

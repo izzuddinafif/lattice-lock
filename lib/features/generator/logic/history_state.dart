@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/history_service.dart';
-import '../../generator/domain/generator_use_case.dart' show globalHistoryService;
+import '../../generator/domain/generator_use_case.dart' show historyServiceProvider;
 
 class HistoryState {
   final List<PatternHistoryEntry> entries;
@@ -35,6 +35,11 @@ class HistoryState {
       searchQuery: searchQuery ?? this.searchQuery,
       activeFilter: activeFilter ?? this.activeFilter,
     );
+  }
+
+  @override
+  String toString() {
+    return 'HistoryState(entries: ${entries.length}, filteredEntries: ${filteredEntries.length}, isLoading: $isLoading, searchQuery: $searchQuery, activeFilter: $activeFilter, error: $error)';
   }
 }
 
@@ -140,7 +145,8 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
   }
 }
 
-// Provider using the SAME global service instance used by generator
+// Provider using the history service from the provider
 final historyProvider = StateNotifierProvider<HistoryNotifier, HistoryState>((ref) {
-  return HistoryNotifier(globalHistoryService);
+  final historyService = ref.watch(historyServiceProvider);
+  return HistoryNotifier(historyService);
 });

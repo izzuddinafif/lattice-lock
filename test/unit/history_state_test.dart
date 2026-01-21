@@ -2,6 +2,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:latticelock/features/generator/logic/history_state.dart';
 import 'package:latticelock/core/services/history_service.dart';
 
+// Helper function to simulate filtering logic (copied from HistoryNotifier._applyFilters)
+List<PatternHistoryEntry> _applyFiltersHelper(
+  List<PatternHistoryEntry> entries,
+  String searchQuery,
+  HistoryFilter? activeFilter,
+) {
+  var filtered = entries;
+
+  // Apply search query filter
+  if (searchQuery.isNotEmpty) {
+    filtered = filtered.where((entry) =>
+        entry.batchCode.toLowerCase().contains(searchQuery.toLowerCase()) ||
+        entry.algorithm.toLowerCase().contains(searchQuery.toLowerCase()) ||
+        entry.materialProfile.toLowerCase().contains(searchQuery.toLowerCase())
+    ).toList();
+  }
+
+  // Apply active filter
+  if (activeFilter != null) {
+    filtered = filtered.where(activeFilter.matches).toList();
+  }
+
+  return filtered;
+}
+
 void main() {
   group('HistoryState Tests', () {
     late List<PatternHistoryEntry> sampleEntries;
@@ -89,9 +114,10 @@ void main() {
     });
 
     test('should filter by search query', () {
+      final filtered = _applyFiltersHelper(sampleEntries, 'BATCH-001', null);
       final state = HistoryState(
         entries: sampleEntries,
-        filteredEntries: sampleEntries,
+        filteredEntries: filtered,
         searchQuery: 'BATCH-001',
       );
 
@@ -101,9 +127,10 @@ void main() {
 
     test('should filter by algorithm', () {
       final filter = HistoryFilter(algorithm: 'chaos_logistic');
+      final filtered = _applyFiltersHelper(sampleEntries, '', filter);
       final state = HistoryState(
         entries: sampleEntries,
-        filteredEntries: sampleEntries,
+        filteredEntries: filtered,
         activeFilter: filter,
       );
 
@@ -113,9 +140,10 @@ void main() {
 
     test('should filter by material', () {
       final filter = HistoryFilter(materialProfile: 'advanced');
+      final filtered = _applyFiltersHelper(sampleEntries, '', filter);
       final state = HistoryState(
         entries: sampleEntries,
-        filteredEntries: sampleEntries,
+        filteredEntries: filtered,
         activeFilter: filter,
       );
 
@@ -128,9 +156,10 @@ void main() {
         algorithm: 'chaos_logistic',
         materialProfile: 'standard',
       );
+      final filtered = _applyFiltersHelper(sampleEntries, 'BATCH-001', filter);
       final state = HistoryState(
         entries: sampleEntries,
-        filteredEntries: sampleEntries,
+        filteredEntries: filtered,
         searchQuery: 'BATCH-001',
         activeFilter: filter,
       );
@@ -142,9 +171,10 @@ void main() {
     });
 
     test('should handle no filter matches', () {
+      final filtered = _applyFiltersHelper(sampleEntries, 'NONEXISTENT', null);
       final state = HistoryState(
         entries: sampleEntries,
-        filteredEntries: sampleEntries,
+        filteredEntries: filtered,
         searchQuery: 'NONEXISTENT',
       );
 

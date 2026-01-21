@@ -1,39 +1,39 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:latticelock/features/encryption/data/hybrid_chaotic_strategy.dart';
+import 'package:latticelock/features/pattern/data/hybrid_chaotic_pattern.dart';
 
 void main() {
-  group('HybridChaoticStrategy Tests', () {
-    late HybridChaoticStrategy strategy;
+  group('HybridChaoticPattern Tests', () {
+    late HybridChaoticPattern strategy;
 
     setUp(() {
-      strategy = HybridChaoticStrategy();
+      strategy = HybridChaoticPattern();
     });
 
     group('Basic Properties', () {
       test('should have correct strategy name', () {
-        expect(strategy.name, equals('Hybrid Chaotic Map (Reversible)'));
+        expect(strategy.name, equals('Hybrid Chaotic Pattern (Spatial Deposition Map)'));
       });
     });
 
-    group('Encryption Tests', () {
+    group('Pattern Generation Tests', () {
       test('should generate 64-value pattern for 8x8 grid', () {
         const input = 'TEST1234';
         const gridSize = 8;
 
-        final pattern = strategy.encrypt(input, gridSize * gridSize);
+        final pattern = strategy.generatePattern(input, gridSize * gridSize);
 
         expect(pattern, hasLength(gridSize * gridSize));
       });
 
-      test('should generate pattern with valid ink ID range (0-4)', () {
+      test('should generate pattern with valid ink ID range (0-2)', () {
         const input = 'BATCH_CODE_123';
         const gridSize = 8;
 
-        final pattern = strategy.encrypt(input, gridSize * gridSize);
+        final pattern = strategy.generatePattern(input, gridSize * gridSize);
 
         for (final value in pattern) {
           expect(value, greaterThanOrEqualTo(0));
-          expect(value, lessThan(5));
+          expect(value, lessThan(3));
         }
       });
 
@@ -41,8 +41,8 @@ void main() {
         const input = 'DETERMINISTIC_TEST';
         const gridSize = 8;
 
-        final pattern1 = strategy.encrypt(input, gridSize * gridSize);
-        final pattern2 = strategy.encrypt(input, gridSize * gridSize);
+        final pattern1 = strategy.generatePattern(input, gridSize * gridSize);
+        final pattern2 = strategy.generatePattern(input, gridSize * gridSize);
 
         expect(pattern1, equals(pattern2));
       });
@@ -52,8 +52,8 @@ void main() {
         const input2 = 'INPUT_TWO';
         const gridSize = 8;
 
-        final pattern1 = strategy.encrypt(input1, gridSize * gridSize);
-        final pattern2 = strategy.encrypt(input2, gridSize * gridSize);
+        final pattern1 = strategy.generatePattern(input1, gridSize * gridSize);
+        final pattern2 = strategy.generatePattern(input2, gridSize * gridSize);
 
         expect(pattern1, isNot(equals(pattern2)));
       });
@@ -62,34 +62,34 @@ void main() {
         const input = '';
         const gridSize = 8;
 
-        final pattern = strategy.encrypt(input, gridSize * gridSize);
+        final pattern = strategy.generatePattern(input, gridSize * gridSize);
 
         expect(pattern, hasLength(gridSize * gridSize));
-        // All values should be 4 (maxInkId for numInks=5)
-        expect(pattern.every((v) => v == 4), isTrue);
+        // All values should be 2 (maxInkId for numInks=3)
+        expect(pattern.every((v) => v == 2), isTrue);
       });
 
       test('should handle Unicode input', () {
-        const input = '测试 тест عربي';
+        const input = '测试 تست عربي';
         const gridSize = 8;
 
-        final pattern = strategy.encrypt(input, gridSize * gridSize);
+        final pattern = strategy.generatePattern(input, gridSize * gridSize);
 
         expect(pattern, hasLength(gridSize * gridSize));
-        expect(pattern.every((v) => v >= 0 && v < 5), isTrue);
+        expect(pattern.every((v) => v >= 0 && v < 3), isTrue);
       });
 
       test('should support dynamic ink count', () {
         const input = 'INK_TEST';
         const gridSize = 4;
 
-        // Test with 3 inks
-        final pattern3 = strategy.encrypt(input, gridSize * gridSize, 3);
-        expect(pattern3.every((v) => v >= 0 && v < 3), isTrue);
+        // Test with 2 inks (minimum)
+        final pattern2 = strategy.generatePattern(input, gridSize * gridSize, 2);
+        expect(pattern2.every((v) => v >= 0 && v < 2), isTrue);
 
-        // Test with 7 inks
-        final pattern7 = strategy.encrypt(input, gridSize * gridSize, 7);
-        expect(pattern7.every((v) => v >= 0 && v < 7), isTrue);
+        // Test with 5 inks
+        final pattern5 = strategy.generatePattern(input, gridSize * gridSize, 5);
+        expect(pattern5.every((v) => v >= 0 && v < 5), isTrue);
       });
 
       test('should clamp ink count to valid range (2-10)', () {
@@ -97,112 +97,23 @@ void main() {
         const gridSize = 4;
 
         // numInks < 2 should be clamped to 2
-        final patternMin = strategy.encrypt(input, gridSize * gridSize, 1);
+        final patternMin = strategy.generatePattern(input, gridSize * gridSize, 1);
         expect(patternMin.every((v) => v >= 0 && v < 2), isTrue);
 
         // numInks > 10 should be clamped to 10
-        final patternMax = strategy.encrypt(input, gridSize * gridSize, 15);
+        final patternMax = strategy.generatePattern(input, gridSize * gridSize, 15);
         expect(patternMax.every((v) => v >= 0 && v < 10), isTrue);
       });
     });
 
-    group('Reversible Decryption Tests', () {
-      test('should decrypt pattern back to original grid', () {
-        const input = 'REVERSIBILITY_TEST';
-        const gridSize = 8;
-
-        // Encrypt
-        final encryptedPattern = strategy.testEncrypt(input, gridSize * gridSize);
-
-        // Decrypt using known input (test helper)
-        final decryptedGrid = strategy.testDecrypt(encryptedPattern, input);
-
-        // Verify we get a valid grid back
-        expect(decryptedGrid, hasLength(gridSize * gridSize));
-
-        // Decrypted values are pre-modulo, so can be larger than 4
-        // But should still be non-negative
-        expect(decryptedGrid.every((v) => v >= 0), isTrue);
-
-        // Re-encrypting should give us back the original encrypted pattern
-        final reencrypted = strategy.testEncrypt(input, gridSize * gridSize);
-        expect(reencrypted, equals(encryptedPattern));
-      });
-
-      test('should maintain bijective property - round trip test', () {
-        const input = 'BIJECTIVE_TEST';
-        const gridSize = 8;
-
-        // Encrypt
-        final encryptedPattern = strategy.testEncrypt(input, gridSize * gridSize);
-
-        // Decrypt - THIS IS THE CRITICAL PART FOR REVERSIBILITY
-        final decryptedGrid = strategy.testDecrypt(encryptedPattern, input);
-
-        // Verify we get a valid grid back (all non-negative values)
-        expect(decryptedGrid.every((v) => v >= 0), isTrue);
-
-        // Re-encrypting should give the same encrypted pattern
-        final reencryptedPattern = strategy.testEncrypt(input, gridSize * gridSize);
-
-        // Should get the same encrypted pattern (proves bijective property)
-        expect(reencryptedPattern, equals(encryptedPattern));
-      });
-
-      test('should handle empty input round trip', () {
-        const input = '';
-        const gridSize = 8;
-
-        final encryptedPattern = strategy.testEncrypt(input, gridSize * gridSize);
-        final decryptedGrid = strategy.testDecrypt(encryptedPattern, input);
-
-        expect(decryptedGrid, hasLength(gridSize * gridSize));
-
-        // Empty input produces maxInkId (4), so decryption should reflect that
-        // The values might not all be 4 after decryption (due to modular arithmetic)
-        // But re-encryption should give the same pattern
-        final reencrypted = strategy.testEncrypt(input, gridSize * gridSize);
-        expect(reencrypted, equals(encryptedPattern));
-      });
-
-      test('should produce different decryptions for different inputs', () {
-        const input1 = 'INPUT_ONE';
-        const input2 = 'INPUT_TWO';
-        const gridSize = 4;
-
-        final pattern1 = strategy.testEncrypt(input1, gridSize * gridSize);
-        final pattern2 = strategy.testEncrypt(input2, gridSize * gridSize);
-
-        final decrypted1 = strategy.testDecrypt(pattern1, input1);
-        final decrypted2 = strategy.testDecrypt(pattern2, input2);
-
-        expect(decrypted1, isNot(equals(decrypted2)));
-      });
-
-      test('should fail to decrypt with wrong input', () {
-        const input = 'CORRECT_INPUT';
-        const wrongInput = 'WRONG_INPUT';
-        const gridSize = 8;
-
-        final encryptedPattern = strategy.testEncrypt(input, gridSize * gridSize);
-
-        // Try to decrypt with wrong input
-        final wrongDecryption = strategy.testDecrypt(encryptedPattern, wrongInput);
-
-        // Should produce different result than correct decryption
-        final correctDecryption = strategy.testDecrypt(encryptedPattern, input);
-        expect(wrongDecryption, isNot(equals(correctDecryption)));
-      });
-    });
-
-    group('Stage-Specific Tests', () {
+    group('Spatial Distribution Tests', () {
       test('should apply permutation stage correctly', () {
         const input = 'PERMUTATION_TEST';
         const gridSize = 8;
 
         // This tests the spatial scrambling aspect
-        final pattern1 = strategy.encrypt(input, gridSize * gridSize);
-        final pattern2 = strategy.encrypt(input, gridSize * gridSize);
+        final pattern1 = strategy.generatePattern(input, gridSize * gridSize);
+        final pattern2 = strategy.generatePattern(input, gridSize * gridSize);
 
         // Same input = same spatial arrangement
         expect(pattern1, equals(pattern2));
@@ -216,7 +127,7 @@ void main() {
         const input = 'DIFFUSION_TEST';
         const gridSize = 8;
 
-        final pattern = strategy.encrypt(input, gridSize * gridSize);
+        final pattern = strategy.generatePattern(input, gridSize * gridSize);
 
         // XOR diffusion should obscure values
         // Adjacent values should have low correlation
@@ -236,35 +147,35 @@ void main() {
         const gridSize = 4;
 
         // Test with different ink counts
-        final pattern3 = strategy.encrypt(input, gridSize * gridSize, 3);
-        final pattern5 = strategy.encrypt(input, gridSize * gridSize, 5);
-        final pattern7 = strategy.encrypt(input, gridSize * gridSize, 7);
+        final pattern2 = strategy.generatePattern(input, gridSize * gridSize, 2);
+        final pattern3 = strategy.generatePattern(input, gridSize * gridSize, 3);
+        final pattern5 = strategy.generatePattern(input, gridSize * gridSize, 5);
 
         // All should be valid for their respective ranges
+        expect(pattern2.every((v) => v >= 0 && v < 2), isTrue);
         expect(pattern3.every((v) => v >= 0 && v < 3), isTrue);
         expect(pattern5.every((v) => v >= 0 && v < 5), isTrue);
-        expect(pattern7.every((v) => v >= 0 && v < 7), isTrue);
 
         // Patterns should be different due to different moduli
+        expect(pattern2, isNot(equals(pattern3)));
         expect(pattern3, isNot(equals(pattern5)));
-        expect(pattern5, isNot(equals(pattern7)));
       });
     });
 
     group('Performance Tests', () {
-      test('should encrypt within reasonable time', () {
+      test('should generate pattern within reasonable time', () {
         const input = 'PERFORMANCE_TEST';
         const gridSize = 8;
 
         final stopwatch = Stopwatch()..start();
 
         for (int i = 0; i < 100; i++) {
-          strategy.encrypt('$input$i', gridSize * gridSize);
+          strategy.generatePattern('$input$i', gridSize * gridSize);
         }
 
         stopwatch.stop();
 
-        // 100 encryptions should complete in less than 5 seconds
+        // 100 pattern generations should complete in less than 5 seconds
         expect(stopwatch.elapsedMilliseconds, lessThan(5000));
       });
 
@@ -274,7 +185,7 @@ void main() {
 
         final stopwatch = Stopwatch()..start();
 
-        final pattern = strategy.encrypt(input, gridSize * gridSize);
+        final pattern = strategy.generatePattern(input, gridSize * gridSize);
 
         stopwatch.stop();
 
@@ -290,7 +201,7 @@ void main() {
         final longInput = 'A' * 10000;
         const gridSize = 8;
 
-        final pattern = strategy.encrypt(longInput, gridSize * gridSize);
+        final pattern = strategy.generatePattern(longInput, gridSize * gridSize);
 
         expect(pattern, hasLength(gridSize * gridSize));
       });
@@ -299,7 +210,7 @@ void main() {
         const shortInput = 'X';
         const gridSize = 8;
 
-        final pattern = strategy.encrypt(shortInput, gridSize * gridSize);
+        final pattern = strategy.generatePattern(shortInput, gridSize * gridSize);
 
         expect(pattern, hasLength(gridSize * gridSize));
       });
@@ -308,30 +219,30 @@ void main() {
         final specialInput = r'!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
         const gridSize = 8;
 
-        final pattern = strategy.encrypt(specialInput, gridSize * gridSize);
+        final pattern = strategy.generatePattern(specialInput, gridSize * gridSize);
 
         expect(pattern, hasLength(gridSize * gridSize));
-        expect(pattern.every((v) => v >= 0 && v < 5), isTrue);
+        expect(pattern.every((v) => v >= 0 && v < 3), isTrue);
       });
 
       test('should handle whitespace-only input', () {
         const whitespaceInput = ' \t\n\r\f\v';
         const gridSize = 8;
 
-        final pattern = strategy.encrypt(whitespaceInput, gridSize * gridSize);
+        final pattern = strategy.generatePattern(whitespaceInput, gridSize * gridSize);
 
         expect(pattern, hasLength(gridSize * gridSize));
       });
     });
 
-    group('Cryptographic Properties', () {
+    group('Chaotic Properties', () {
       test('should have avalanche effect - small input change causes big pattern change', () {
         const input1 = 'AVALANCHE_TEST';
         const input2 = 'AVALANCHE_TEST!'; // One character difference
         const gridSize = 8;
 
-        final pattern1 = strategy.encrypt(input1, gridSize * gridSize);
-        final pattern2 = strategy.encrypt(input2, gridSize * gridSize);
+        final pattern1 = strategy.generatePattern(input1, gridSize * gridSize);
+        final pattern2 = strategy.generatePattern(input2, gridSize * gridSize);
 
         // Count differing positions
         int differences = 0;
@@ -349,10 +260,10 @@ void main() {
         const input = 'DISTRIBUTION_TEST';
         const gridSize = 16; // Larger grid for better statistics
 
-        final pattern = strategy.encrypt(input, gridSize * gridSize);
+        final pattern = strategy.generatePattern(input, gridSize * gridSize);
 
-        // Count occurrences of each value (0-4)
-        final counts = List.filled(5, 0);
+        // Count occurrences of each value (0-2)
+        final counts = List.filled(3, 0);
         for (final value in pattern) {
           counts[value]++;
         }
@@ -363,7 +274,7 @@ void main() {
             reason: 'Some values not represented: $counts');
 
         // Calculate expected count
-        final expected = pattern.length / 5;
+        final expected = pattern.length / 3;
 
         // Most values should appear within 100% of expected count
         // (Very relaxed constraint - chaotic systems have natural variance)
@@ -373,7 +284,7 @@ void main() {
           if (deviation < 100) withinRange++;
         }
 
-        expect(withinRange, greaterThanOrEqualTo(3),
+        expect(withinRange, greaterThanOrEqualTo(2),
             reason: 'Distribution too skewed: $counts');
       });
 
@@ -381,7 +292,7 @@ void main() {
         const input = 'PATTERN_TEST';
         const gridSize = 8;
 
-        final pattern = strategy.encrypt(input, gridSize * gridSize);
+        final pattern = strategy.generatePattern(input, gridSize * gridSize);
 
         // Check for repeating sequences
         bool hasRepeatingSequence(String sequence, int minRepeats) {

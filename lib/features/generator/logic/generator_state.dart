@@ -44,6 +44,11 @@ class GeneratorState {
       error: error,
     );
   }
+
+  @override
+  String toString() {
+    return 'GeneratorState(inputText: $inputText, selectedAlgorithm: $selectedAlgorithm, selectedMaterial: ${selectedMaterial.name}, selectedGridConfig.size: ${selectedGridConfig.size}, encryptedPattern.length: ${encryptedPattern.length}, isGenerating: $isGenerating, error: $error)';
+  }
 }
 
 class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
@@ -70,7 +75,7 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
 
     // CRITICAL: Don't read materialProfileProvider here - it might not be loaded yet
     // The provider loads asynchronously from Hive, so activeProfile could be null
-    // Start with standard set, then initializeAsync() will load the saved profile
+    // Start with standard set, then ref.listen will reactively update when loaded
     final initialState = GeneratorState(
       inputText: '',
       selectedAlgorithm: 'chaos_logistic',
@@ -80,34 +85,22 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
       isGenerating: false,
     );
 
-    // Load saved material profile asynchronously after provider is ready
-    _initializeFromSavedState();
+    // Listen to material profile provider changes and reactively update
+    ref.listen<MaterialProfileState>(materialProfileProvider, (previous, next) {
+      // Only update if profiles have loaded and there's an active profile
+      if (next.profiles.isNotEmpty && next.activeProfile != null) {
+        final savedMaterial = next.activeProfile!.toMaterialProfile();
 
-    return initialState;
-  }
-
-  Future<void> _initializeFromSavedState() async {
-    // Wait for Hive to finish loading - retry up to 10 times with 200ms delay
-    for (int i = 0; i < 10; i++) {
-      await Future.delayed(const Duration(milliseconds: 200));
-
-      final materialProfileState = ref.read(materialProfileProvider);
-
-      // Check if profiles have loaded (not empty list)
-      if (materialProfileState.profiles.isNotEmpty) {
-        if (materialProfileState.activeProfile != null) {
-          final savedMaterial = materialProfileState.activeProfile!.toMaterialProfile();
-
-          // Update state with saved material profile
+        // Only update if different from current material
+        if (state.value?.selectedMaterial.name != savedMaterial.name) {
           state = AsyncValue.data(state.value!.copyWith(
             selectedMaterial: savedMaterial,
           ));
-          return;
-        } else {
-          return;
         }
       }
-    }
+    });
+
+    return initialState;
   }
 
   void updateInputText(String text) {
@@ -216,9 +209,9 @@ class GeneratorNotifier extends AsyncNotifier<GeneratorState> {
       return;
     }
 
-    if (actualGridSize < 3 || actualGridSize > 32) {
+    if (actualGridSize < 3 || actualGridSize > 8) {
       state = AsyncValue.data(currentState.copyWith(
-        error: 'Invalid grid size: $actualGridSize (must be between 3 and 32)'
+        error: 'Invalid grid size: $actualGridSize (must be between 3 and 8)'
       ));
       return;
     }

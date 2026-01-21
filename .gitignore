@@ -58,3 +58,21 @@ claudedocs/
 
 # Serena MCP memories
 .serena/memories/
+*.pdf
+*.doc*
+
+# Backend test and debug files
+backend/*.log
+backend/debug_*.py
+backend/test_*.py
+backend/main.py.backup
+backend/main.py.*
+backend/__pycache__/
+backend/.pytest_cache/
+backend/*.db
+backend/*.sqlite
+
+# Test databases
+test_hive/
+*.sqlite
+*.db

@@ -1,4 +1,4 @@
-import '../domain/encryption_strategy.dart';
+import '../domain/pattern_generation_strategy.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
@@ -7,25 +7,39 @@ import 'hybrid/permutation_stage.dart';
 import 'hybrid/diffusion_stage.dart';
 import 'hybrid/substitution_stage.dart';
 
-/// Hybrid Chaotic Encryption Strategy
+/// Hybrid Chaotic Pattern Generation Strategy
 ///
-/// Multi-stage reversible encryption combining three chaotic algorithms:
+/// Multi-stage spatial pattern generation combining three chaotic algorithms:
 /// Stage 1: Permutation - Arnold's Cat Map (spatial scrambling)
-/// Stage 2: Diffusion - Logistic Map XOR (value obscuring)
+/// Stage 2: Diffusion - Logistic Map XOR (value mixing)
 /// Stage 3: Substitution - Modular multiplication (bijective transformation)
 ///
-/// All stages are mathematically reversible, enabling pattern → batch code decryption
-/// through constrained brute-force search (implemented separately in scanner)
-class HybridChaoticStrategy implements EncryptionStrategy {
+/// Mathematical Properties:
+/// - Deterministic: Same batch code always produces same pattern
+/// - Spatially chaotic: Creates visually complex, unpredictable-looking patterns
+/// - Bijective components: All stages are mathematically reversible
+/// - Good distribution: Spreads ink types evenly across grid
+///
+/// Purpose: Manufacturing control (NOT encryption)
+/// - Generates spatial deposition maps for inkjet printing
+/// - Maps batch codes to unique material patterns
+/// - Visual complexity prevents human-perceivable patterns
+/// - Deterministic output ensures reproducible manufacturing
+///
+/// Note: While these algorithms ARE used in cryptography (historical context),
+/// here they serve a non-cryptographic purpose: pattern generation for
+/// physical anti-counterfeiting tags. Security comes from material properties,
+/// not from hiding information.
+class HybridChaoticPattern implements PatternGenerationStrategy {
   final PermutationStage _permutation = PermutationStage();
   final DiffusionStage _diffusion = DiffusionStage();
   final SubstitutionStage _substitution = SubstitutionStage();
 
   @override
-  String get name => "Hybrid Chaotic Map (Reversible)";
+  String get name => "Hybrid Chaotic Pattern (Spatial Deposition Map)";
 
   @override
-  List<int> encrypt(String input, int length, [int numInks = 5]) {
+  List<int> generatePattern(String input, int length, [int numInks = 3]) {
     // Handle empty input
     if (input.isEmpty) {
       int maxInkId = numInks - 1;
@@ -42,7 +56,7 @@ class HybridChaoticStrategy implements EncryptionStrategy {
       throw ArgumentError('Length must be a perfect square (got $length, expected ${gridSize * gridSize})');
     }
 
-    // === DERIVE CRYPTOGRAPHIC PARAMETERS ===
+    // === DERIVE PATTERN GENERATION PARAMETERS ===
     final seed = _hashToSeed(input);
     final permIterations = _derivePermutationIterations(seed, gridSize);
     final diffSeed = _deriveDiffusionSeed(seed);
@@ -51,7 +65,7 @@ class HybridChaoticStrategy implements EncryptionStrategy {
     // === INITIALIZE GRID ===
     var grid = _initializeGrid(input, seed, numInks, gridSize);
 
-    // === STAGE 1: PERMUTION ===
+    // === STAGE 1: PERMUTATION ===
     grid = _permutation.permute(grid, permIterations);
 
     // === STAGE 2: DIFFUSION ===
@@ -65,67 +79,11 @@ class HybridChaoticStrategy implements EncryptionStrategy {
     return flat.map((v) => v % numInks).toList();
   }
 
-  @override
-  String decrypt(List<int> encryptedData) {
-    // NOTE: This is a placeholder for development
-    // Actual decryption requires brute-force through batch code formats
-    // or knowing the original batch code
-    //
-    // For production use, implement PatternScanner component that:
-    // 1. Tries valid batch code formats (e.g., NNNN, NNNNNN, LLLNNN)
-    // 2. For each code, generates expected pattern using encrypt()
-    // 3. Finds matching pattern
-    // 4. Returns original batch code
-
-    throw UnimplementedError(
-      'Decryption requires PatternScanner component with batch code format constraints.\n'
-      'For development testing with known batch code, use _decryptKnown() method.',
-    );
-  }
-
-  /// Internal decryption when batch code is known
-  /// Useful for testing and validation
-  List<int> _decryptKnown(List<int> pattern, String originalInput) {
-    final seed = _hashToSeed(originalInput);
-
-    // Calculate grid size from pattern length
-    final gridSize = sqrt(pattern.length).round();
-
-    // Infer numInks from pattern (max value + 1)
-    final numInks = pattern.reduce((a, b) => a > b ? a : b) + 1;
-
-    final permIterations = _derivePermutationIterations(seed, gridSize);
-    final diffSeed = _deriveDiffusionSeed(seed);
-    final subMultiplier = _deriveSubstitutionMultiplier(seed, gridSize, numInks);
-
-    var data = List<int>.from(pattern);
-
-    // Reverse Stage 3: Substitution
-    data = _substitution.invert(data, subMultiplier);
-
-    // Reverse Stage 2: Diffusion
-    data = _diffusion.invertWithBigSeed(data, diffSeed);
-
-    // Reverse Stage 1: Permutation
-    var grid = _reshapeToGrid(data);
-    grid = _permutation.invert(grid, permIterations);
-    data = _flattenGrid(grid);
-
-    return data;
-  }
-
-  /// Test helper: Direct encryption without validation
-  /// Exposed for testing round-trip encryption/decryption
+  /// Test helper: Generate pattern without validation
+  /// Exposed for testing reproducibility
   @visibleForTesting
-  List<int> testEncrypt(String input, int length, [int numInks = 5]) {
-    return encrypt(input, length, numInks);
-  }
-
-  /// Test helper: Direct decryption when batch code is known
-  /// Exposed for testing reversibility
-  @visibleForTesting
-  List<int> testDecrypt(List<int> pattern, String originalInput) {
-    return _decryptKnown(pattern, originalInput);
+  List<int> testGenerate(String input, int length, [int numInks = 3]) {
+    return generatePattern(input, length, numInks);
   }
 
   /// Hash input string to BigInt seed using SHA-256
@@ -137,7 +95,6 @@ class HybridChaoticStrategy implements EncryptionStrategy {
 
   /// Derive permutation iteration count from seed
   /// Use 5-44 iterations to avoid hitting the period (48)
-  /// Derive permutation iteration count from hash
   /// Dynamic based on grid size to ensure good mixing
   int _derivePermutationIterations(BigInt seed, int gridSize) {
     // More iterations for larger grids
@@ -196,26 +153,5 @@ class HybridChaoticStrategy implements EncryptionStrategy {
   /// Flatten 2D grid to 1D array
   List<int> _flattenGrid(List<List<int>> grid) {
     return grid.expand((row) => row).toList();
-  }
-
-  /// Reshape 1D array to 2D grid
-  /// Calculate grid size from data length (must be perfect square)
-  List<List<int>> _reshapeToGrid(List<int> data) {
-    final size = sqrt(data.length).round();
-    if (size * size != data.length) {
-      throw ArgumentError(
-        'Data length must be a perfect square (got $data.length)',
-      );
-    }
-
-    final grid = List.generate(
-      size,
-      (y) => List.generate(
-        size,
-        (x) => data[y * size + x],
-      ),
-    );
-
-    return grid;
   }
 }
