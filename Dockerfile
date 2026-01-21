@@ -45,6 +45,10 @@ COPY --from=build-stage /app/build/web /usr/share/nginx/html
 # Copy custom nginx configuration
 COPY nginx-simple.conf /etc/nginx/nginx.conf
 
+# Copy entrypoint script for dynamic backend configuration
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Set proper permissions
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chmod -R 755 /usr/share/nginx/html
@@ -56,5 +60,6 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD curl -f http://localhost/ || exit 1
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start nginx via entrypoint script
+# Set BACKEND_URL env var in Coolify to override default backend:8000
+CMD ["/docker-entrypoint.sh"]
