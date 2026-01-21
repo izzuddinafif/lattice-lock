@@ -17,6 +17,16 @@ class FastApiPDFService implements PDFService {
       defaultValue: 'http://localhost:8000');
   static const Duration _timeout = Duration(seconds: 30);
 
+  /// Get the base URL for API requests
+  /// For web with relative base URL, construct from current origin
+  String _getEffectiveBaseUrl() {
+    if (_baseUrl == '/' || _baseUrl.isEmpty) {
+      // Use relative path - browser will use current origin
+      return '';
+    }
+    return _baseUrl;
+  }
+
   @override
   Future<PDFResult> generatePDF(PDFMetadata metadata) async {
     try {
@@ -61,9 +71,13 @@ class FastApiPDFService implements PDFService {
         'metadata': metadataMap
       };
 
+      // Build URI - use relative path for web deployment
+      final effectiveBaseUrl = _getEffectiveBaseUrl();
+      final uri = Uri.parse('$effectiveBaseUrl/generate-pdf');
+
       // Make HTTP request to FastAPI backend
       final response = await http.post(
-        Uri.parse('$_baseUrl/generate-pdf'),
+        uri,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
