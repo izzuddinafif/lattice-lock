@@ -1,65 +1,100 @@
-# Multi-stage Dockerfile for LatticeLock Flutter Web Application
+# Multi-stage Dockerfile for LatticeLock (Backend + Frontend in single container)
 # Stage 1: Flutter Build Stage
-FROM ghcr.io/cirruslabs/flutter:3.35.7 AS build-stage
+FROM ghcr.io/cirruslabs/flutter:3.35.7 AS flutter-build
 
-# Set working directory
 WORKDIR /app
-
-# Increase Node heap size for better memory management
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
-# Copy pubspec files
 COPY pubspec.* ./
-
-# Download dependencies with verbose output
 RUN flutter pub get --verbose
-
-# Copy the rest of the source code
 COPY . .
-
-# Configure web platform and build for production
 RUN flutter create . --platforms=web --project-name=latticelock
 
-# Build with API URL from build argument (defaults to localhost:8000)
-# Added verbose logging and disabled wasm dry run for faster builds
 ARG PDF_API_BASE_URL=http://localhost:8000
 RUN echo "=== Starting Flutter web build ===" && \
     flutter build web --release --no-pub --csp --verbose \
     --dart-define=PDF_API_BASE_URL=${PDF_API_BASE_URL} \
     --no-wasm-dry-run && \
-    echo "=== Build completed successfully ===" && \
-    ls -lh build/web/
+    echo "=== Build completed successfully ==="
 
-# Stage 2: Nginx Runtime Stage
-FROM nginx:alpine AS runtime-stage
+# Stage 2: Backend Stage
+FROM python:3.11-slim AS backend-build
 
-# Install additional nginx modules for better SPA support
-RUN apk add --no-cache curl
+WORKDIR /app
 
-# Remove default nginx content
-RUN rm -rf /usr/share/nginx/html/*
+# Disable AVX-512 optimizations at runtime
+ENV NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512F AVX512CD AVX512VL AVX512BW AVX512DQ"
 
-# Copy built Flutter app from build stage
-COPY --from=build-stage /app/build/web /usr/share/nginx/html
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    supervisor \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy custom nginx configuration
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY backend/ /app/
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash app && \
+    chown -R app:app /app
+
+# Stage 3: Final Runtime Image (Backend + nginx + Flutter web)
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Disable AVX-512 optimizations
+ENV NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512F AVX512CD AVX512VL AVX512BW AVX512DQ"
+
+# Install system dependencies (nginx + supervisor + OpenCV deps)
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    supervisor \
+    nginx \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /etc/nginx/conf.d/default.conf
+
+# Copy Python dependencies from backend-build stage
+COPY --from=backend-build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=backend-build /usr/local/bin /usr/local/bin
+
+# Copy backend application code
+COPY --from=backend-build /app /app
+
+# Copy Flutter web build
+COPY --from=flutter-build /app/build/web /usr/share/nginx/html
+
+# Copy nginx configuration
 COPY nginx-simple.conf /etc/nginx/nginx.conf
 
-# Copy entrypoint script for dynamic backend configuration
+# Copy supervisor configuration
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Copy entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Set proper permissions
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chmod -R 755 /usr/share/nginx/html
+# Create non-root user and set permissions
+RUN useradd --create-home --shell /bin/bash app && \
+    chown -R app:app /app /usr/share/nginx/html /var/log/nginx /var/lib/nginx /run
 
-# Expose port 80
-EXPOSE 80
+# Expose ports
+EXPOSE 80 8000
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost/ || exit 1
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health && curl -f http://localhost/ || exit 1
 
-# Start nginx via entrypoint script
-# Set BACKEND_URL env var in Coolify to override default backend:8000
-CMD ["/docker-entrypoint.sh"]
+# Run supervisor to manage both processes
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
