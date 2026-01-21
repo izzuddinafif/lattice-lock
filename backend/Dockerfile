@@ -3,24 +3,36 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Disable NumPy CPU-specific optimizations for portability
-# This prevents "RuntimeError: NumPy was built with baseline optimizations" on different CPUs
-ENV NPY_DISABLE_CPU_FEATURES=1
-
-# Install system dependencies
+# Install system dependencies for building NumPy
 # libgl1: OpenGL library required by OpenCV
 # libglib2.0-0: GLib library required by OpenCV
+# build-essential, meson-python, ninja-build, cython: required to build NumPy from source
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
     libgl1 \
     libglib2.0-0 \
+    build-essential \
+    meson-python \
+    ninja-build \
+    cython \
     && rm -rf /var/lib/apt/lists/*
+
+# Build NumPy with X86_V3 baseline (AVX2 max) for cross-CPU compatibility
+# - X86_V3 baseline: works on both Alder Lake (local build) and Broadwell-EP (server)
+# - cpu-dispatch=none: no additional optimization paths (avoids AVX-512 compatibility issues)
+# This ensures NumPy works when built on newer CPUs and deployed to older CPUs
+RUN pip install --no-cache-dir --no-binary :all: 'numpy>=1.26.3' \
+    -Csetup-args=-Dcpu-baseline="X86_V3" \
+    -Csetup-args=-Dcpu-dispatch="none"
+
+# Verify NumPy installation
+RUN python -c "import numpy; print('NumPy version:', numpy.__version__); print('CPU config OK')"
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install remaining Python dependencies (use pre-built wheels)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
