@@ -3,20 +3,22 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for building NumPy
+# Install system dependencies
 # libgl1: OpenGL library required by OpenCV
 # libglib2.0-0: GLib library required by OpenCV
-# build-essential, meson-python, ninja-build, cython: required to build NumPy from source
+# build-essential, ninja-build: required for building NumPy from source
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
     libgl1 \
     libglib2.0-0 \
     build-essential \
-    meson-python \
     ninja-build \
-    cython \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Python build tools via pip
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir meson-python cython
 
 # Build NumPy with X86_V3 baseline (AVX2 max) for cross-CPU compatibility
 # - X86_V3 baseline: works on both Alder Lake (local build) and Broadwell-EP (server)
@@ -33,8 +35,7 @@ RUN python -c "import numpy; print('NumPy version:', numpy.__version__); print('
 COPY requirements.txt .
 
 # Install remaining Python dependencies (use pre-built wheels)
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
