@@ -25,12 +25,15 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install Python dependencies
-# Build NumPy from source with X86_V2 baseline for maximum CPU compatibility
-# Pre-built wheels from PyPI don't work on all virtualization platforms
-# All other packages use pre-built wheels for speed
+# Build NumPy from source with MINIMAL cpu baseline for maximum compatibility
+# Pre-built wheels from PyPI don't work on QEMU virtualization
+# Force minimal baseline to avoid CPU detection issues on virtualization platforms
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir wheel && \
-    pip install --no-cache-dir --no-binary :none: 'numpy>=1.26.3,<2.0' && \
+    pip install --no-cache-dir wheel meson-python ninja && \
+    pip install --no-cache-dir --no-binary :none: --no-build-isolation \
+    -Csetup-args=-Dcpu-baseline="minimal" \
+    -Csetup-args=-Dcpu-dispatch="none" \
+    'numpy>=1.26.3,<2.0' && \
     pip install --no-cache-dir -r requirements.txt --no-deps && \
     pip install --no-cache-dir -r requirements.txt
 
