@@ -1,36 +1,55 @@
-# LatticeLock 🔐
+# LatticeLock
 
-A sophisticated Flutter application that generates secure encryption patterns for physical security tags using chaos-based cryptography algorithms. Transform batch codes and serial numbers into unique 8×8 grid patterns using temperature-reactive inks for advanced anti-counterfeiting protection.
+A sophisticated Flutter application that generates secure spatial patterns for physical security tags using chaos-based pattern generation algorithms. Transform batch codes and serial numbers into unique 3×3 to 8×8 grid patterns using temperature-reactive inks for advanced anti-counterfeiting protection.
+
+**Core Purpose**: Manufacturing control and authenticity verification (NOT encryption)
+- Patterns serve as deposition maps for inkjet printing of perovskite quantum dot tags
+- Scanner module verifies printed tags against stored patterns
+- Physical material properties provide security through authenticity verification
 
 ![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![OpenCV](https://img.shields.io/badge/OpenCV-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white)
 
-## 🌟 Key Features
+## Key Features
 
-### 🔐 Advanced Cryptography
-- **Chaos-Based Encryption**: Implements Logistic Map, Tent Map, and Arnold's Cat Map algorithms
-- **Deterministic Patterns**: Same input always generates identical secure patterns
-- **High Entropy**: Multiple entropy sources ensure unpredictable, secure outputs
+### Advanced Pattern Generation
+- **Hybrid Chaotic Patterns**: Combines diffusion, permutation, and substitution stages
+- **Deterministic Output**: Same input always generates identical patterns
+- **Variable Grid Sizes**: Supports 3×3 to 8×8 grids for different use cases
+- **Multi-Ink Support**: Configurable number of material inks (2-5 colors)
 
-### 🖨️ Physical Security Integration
+### Scanner & Verification
+- **Hough Transform Detection**: Accurate grid line detection for sparse grids
+- **Centroid-Based Fallback**: Reliable detection for dense grids
+- **K-Means Color Clustering**: Automatic color identification with duplicate merging
+- **Subset Color Matching**: Scanned patterns can use fewer colors than stored profile
+- **Pattern Verification**: Database lookup with confidence scoring
+
+### Physical Security Integration
 - **Temperature-Reactive Inks**: 75°C, 55°C, and 35°C reactive materials
 - **Multi-Role Ink System**: Data encoding, fake elements, and metadata layers
 - **PDF Blueprint Generation**: Professional manufacturing specifications
+- **CMYK Color Matching**: Exact color reproduction in printed PDFs
 
-### 📱 Cross-Platform Support
+### Digital Signatures
+- **HMAC-SHA256**: Cryptographic pattern signing
+- **Authenticity Verification**: Tamper detection through signature validation
+- **Secure Key Management**: Shared secret key model with constant-time comparison
+
+### Cross-Platform Support
 - **Web Application**: Browser-based access with PWA support
 - **Mobile Apps**: Native Android and iOS applications
 - **Desktop**: Windows, macOS, and Linux support
 
-### 🏗️ Enterprise-Ready Architecture
+### Enterprise-Ready Architecture
 - **Docker Deployment**: Containerized with multi-stage builds
-- **Database Integration**: PostgreSQL with Redis caching
-- **Monitoring**: Grafana + Prometheus integration
-- **Security**: HTTPS, CSP headers, encrypted storage
+- **Database Integration**: SQLite for pattern storage and retrieval
+- **FastAPI Backend**: Modern async Python backend with OpenCV
+- **Security**: Encrypted storage, digital signatures, CSP headers
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Flutter SDK (3.9.0+)
@@ -80,40 +99,29 @@ A sophisticated Flutter application that generates secure encryption patterns fo
    - API: http://localhost:8000
    - Grafana: http://localhost:3000
 
-## 📖 How It Works
-
-### Input Processing
-1. **Batch Code Input**: Enter your unique batch code or serial number
-2. **Algorithm Selection**: Choose from three chaos-based encryption methods
-3. **Material Profile**: Select appropriate ink configuration
+## How It Works
 
 ### Pattern Generation
-1. **Entropy Generation**: Input text is converted to high-entropy seed values
-2. **Chaos Computation**: Selected algorithm generates pseudo-random sequence
-3. **Quantization**: Chaos values mapped to ink types (0-4)
-4. **Grid Formation**: 64-cell 8×8 pattern created
+1. **Batch Code Input**: Enter your unique batch code or serial number
+2. **Grid Size Selection**: Choose from 3×3 to 8×8 grid size
+3. **Material Profile**: Select appropriate ink configuration (2-5 colors)
+4. **Pattern Generation**: Hybrid chaotic algorithm generates spatial deposition map
+5. **Digital Signature**: Pattern signed with HMAC-SHA256 for authenticity
 
-### Output Creation
+### Scanner Verification
+1. **Image Upload**: Capture or upload printed tag image
+2. **Grid Detection**: Hough transform detects grid lines (sparse) or centroids (dense)
+3. **Color Clustering**: K-means identifies 2-5 colors with duplicate merging
+4. **Pattern Extraction**: Grid converted to ink ID sequence
+5. **Database Verification**: Match against stored patterns with confidence scoring
+
+### PDF Export
 1. **Visual Preview**: Real-time grid visualization with color coding
-2. **PDF Export**: Professional blueprint generation for manufacturing
-3. **Secure Storage**: Encrypted local storage of patterns
+2. **PDF Generation**: Professional blueprint with exact CMYK colors
+3. **Manufacturing**: PDF used as inkjet printing guide
+4. **Secure Storage**: Encrypted local storage of patterns with signatures
 
-## 🔬 Cryptographic Algorithms
-
-### Logistic Map (Chaos)
-```dart
-// x_next = r * x * (1 - x) where r = 3.99
-x = r * x * (1 - x);
-inkId = (x * 5).floor(); // Map to 0-4 ink types
-```
-
-### Tent Map (Chaos)
-Piecewise linear chaotic map providing excellent distribution properties.
-
-### Arnold's Cat Map
-2D chaotic transformation preserving ergodic properties.
-
-## 🎨 Material Profiles
+## Material Profiles
 
 ### Standard Set A (Le Chatelier)
 - **75°C Reactive** (75R): High-temperature data encoding
@@ -122,7 +130,7 @@ Piecewise linear chaotic map providing excellent distribution properties.
 - **55°C Protected** (55P): Additional fake element
 - **35°C Marker** (35M): Metadata and alignment marking
 
-## 🏛️ Architecture
+## Architecture
 
 ### Frontend (Flutter)
 ```
@@ -130,38 +138,54 @@ lib/
 ├── main.dart                    # Application entry point
 ├── core/                        # Core services and utilities
 │   ├── services/
-│   │   ├── crypto_integration_test.dart
-│   │   ├── native_crypto_service.dart
-│   │   └── secure_storage_service.dart
-│   └── utils/
-│       └── data_converter.dart
-├── features/
-│   ├── generator/               # Pattern generation feature
-│   │   ├── presentation/
-│   │   │   └── generator_screen.dart
-│   │   ├── logic/
-│   │   │   └── generator_state.dart
-│   │   └── domain/
-│   │       └── generator_use_case.dart
-│   ├── encryption/              # Cryptographic algorithms
-│   │   ├── domain/
-│   │   │   └── encryption_strategy.dart
-│   │   └── data/
-│   │       ├── chaos_strategy.dart
-│   │       ├── tent_map_strategy.dart
-│   │       └── arnolds_cat_map_strategy.dart
-│   └── material/                # Ink and material profiles
-│       └── models/
-│           └── ink_profile.dart
+│   │   ├── fastapi_pdf_service.dart  # PDF generation
+│   │   ├── history_service.dart       # Pattern history
+│   │   ├── pdf_download.dart          # Platform-specific download
+│   │   └── indexeddb_storage_service.dart  # Web storage
+│   └── models/
+│       ├── grid_config.dart           # Grid configuration
+│       ├── pattern_history_entry.dart # History records
+│       └── signed_pattern.dart        # Pattern with signature
+└── features/
+    ├── pattern/                  # Pattern generation algorithms
+    │   └── data/
+    │       └── hybrid/           # Hybrid chaotic pattern
+    │           ├── diffusion_stage.dart
+    │           ├── permutation_stage.dart
+    │           ├── substitution_stage.dart
+    │           └── hybrid_chaotic_pattern.dart
+    ├── scanner/                  # Image scanner & verification
+    │   ├── domain/
+    │   │   └── scanner_use_case.dart
+    │   └── presentation/
+    │       └── scanner_screen.dart
+    ├── signature/                # Digital signatures
+    │   └── domain/
+    │       ├── signature_service.dart
+    │       └── secure_pattern_generator.dart
+    └── material/                 # Ink profiles
+        └── models/
+            └── ink_profile.dart
 ```
 
-### Backend Infrastructure
-- **Web Server**: Nginx with gzip compression and caching
-- **Database**: PostgreSQL for material profiles and user data
-- **Cache**: Redis for session storage and performance
-- **Monitoring**: Prometheus metrics with Grafana dashboards
+### Backend (FastAPI + OpenCV)
+```
+backend/
+├── main.py                      # FastAPI app, scanner, PDF generation
+├── database/                    # SQLite database
+│   ├── models.py                # SQLAlchemy ORM
+│   ├── repository.py            # Database repository
+│   └── database.py              # Database initialization
+└── requirements.txt             # Python dependencies
+```
 
-## 🔧 Development
+**Key Backend Features:**
+- **Scanner**: Hough transform grid detection, K-means color clustering
+- **PDF Generation**: ReportLab with CMYK color matching
+- **Database**: SQLite for pattern storage and retrieval
+- **API**: RESTful endpoints for scanner, verification, and PDF generation
+
+## Development
 
 ### Running Tests
 ```bash
@@ -192,7 +216,7 @@ flutter analyze
 flutter format .
 ```
 
-## 🐳 Docker Configuration
+## Docker Configuration
 
 ### Multi-Stage Build
 ```dockerfile
@@ -223,25 +247,26 @@ SECRET_KEY=super_secret_key
 DEBUG=false
 ```
 
-## 🔒 Security Features
+## Security Features
 
 ### Data Protection
-- **Encrypted Storage**: Platform-secure storage for sensitive data
+- **Encrypted Storage**: Platform-secure storage for sensitive patterns
+- **Digital Signatures**: HMAC-SHA256 for authenticity verification
 - **CSP Headers**: Content Security Policy implementation
 - **XSS Protection**: Cross-site scripting prevention
-- **Clickjacking Protection**: Frame options and headers
 
-### Cryptographic Security
-- **Post-Quantum Ready**: Chaos-based algorithms resistant to quantum attacks
-- **High Entropy**: Multiple entropy sources prevent predictability
-- **Deterministic Security**: Same input = same output for verification
+### Pattern Security
+- **Deterministic Generation**: Same input always produces identical pattern
+- **Tamper Detection**: Signatures detect unauthorized modifications
+- **Physical Security**: Material properties prevent cloning
+- **Scanner Verification**: Database lookup confirms authenticity
 
 ### Infrastructure Security
 - **Container Security**: Non-root execution and read-only filesystems
 - **Network Isolation**: Docker network segmentation
 - **Secrets Management**: Environment variable-based configuration
 
-## 📊 Monitoring & Observability
+## Monitoring & Observability
 
 ### Health Checks
 - Application health: `/health`
@@ -263,7 +288,7 @@ docker-compose logs -f latticelock-web
 docker-compose logs -f
 ```
 
-## 🚀 Deployment Options
+## Deployment Options
 
 ### Development
 ```bash
@@ -281,7 +306,7 @@ docker-compose --profile production up -d
 docker-compose up -d --scale latticelock-web=3
 ```
 
-## 🔄 CI/CD Integration
+## CI/CD Integration
 
 ### GitHub Actions Example
 ```yaml
@@ -301,26 +326,44 @@ jobs:
           docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
-## 🛠️ API Reference
+## API Reference
 
 ### Pattern Generation
 ```dart
 final pattern = await generatorUseCase.generatePattern(
   inputText: "LATTICE-2025-X",
-  algorithm: "chaos_logistic"
+  gridSize: 8,  // 3×3 to 8×8
+  numInks: 3,   // 2 to 5 colors
 );
+```
+
+### Scanner Analysis
+```dart
+final result = await scannerUseCase.analyzeImage(imageBytes);
+// Returns: pattern (ink IDs), extractedColors (RGB), gridDetected
+```
+
+### Pattern Verification
+```dart
+final verification = await scannerUseCase.verifyPattern(
+  pattern,
+  algorithm: "hybrid_chaotic",
+  extractedColors: rgbGrid,
+);
+// Returns: matches, partialMatches, confidence
 ```
 
 ### PDF Generation
 ```dart
-await generatorUseCase.generatePDF(
-  pattern: encryptedPattern,
+await pdfService.generatePDF(
+  pattern: pattern,
   material: selectedMaterial,
-  inputText: batchCode
+  inputText: batchCode,
+  gridSize: 8,
 );
 ```
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -334,38 +377,43 @@ await generatorUseCase.generatePDF(
 - Update documentation for API changes
 - Ensure cross-platform compatibility
 
-## 📝 License
+## License
 
-This project is proprietary software. All rights reserved.
+MIT License - See LICENSE file for details
 
-## 📞 Support
+## Support
 
 For support and questions:
 - Create an issue in the repository
 - Contact the development team
 - Check the deployment documentation for common issues
 
-## 🗺️ Roadmap
+## Roadmap
 
 ### Phase 1 (Current)
-- ✅ Core pattern generation algorithms
-- ✅ Cross-platform Flutter application
-- ✅ Docker deployment infrastructure
-- ✅ PDF blueprint generation
+- Core pattern generation algorithms (Hybrid Chaotic Pattern)
+- Cross-platform Flutter application
+- Docker deployment infrastructure
+- PDF blueprint generation with CMYK colors
+- Scanner module with Hough transform grid detection
+- Digital signatures with HMAC-SHA256
+- Variable grid sizes (3×3 to 8×8)
+- SQLite database for pattern storage
 
 ### Phase 2 (Upcoming)
-- 🔄 Backend API integration
-- 🔄 Database schema implementation
-- 🔄 User authentication and authorization
-- 🔄 Advanced material profile management
+- Mobile camera integration for real-time scanning
+- Advanced material profile management
+- Batch processing capabilities
+- User authentication and authorization
+- Analytics and reporting dashboard
 
 ### Phase 3 (Future)
-- 🔄 Mobile camera integration for scanning
-- 🔄 Real-time pattern verification
-- 🔄 Batch processing capabilities
-- 🔄 Advanced analytics and reporting
+- Machine learning for improved scanner accuracy
+- Multi-language support
+- Cloud deployment with auto-scaling
+- Advanced analytics and pattern insights
 
 ---
 
-**LatticeLock** - Securing the physical world with mathematical chaos. 🔐✨</content>
+**LatticeLock** - Securing the physical world with mathematical chaos.</content>
 <filePath>README.md
