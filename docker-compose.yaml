@@ -40,6 +40,12 @@ services:
     restart: unless-stopped
     networks:
       - latticelock-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
 
   # Redis for session storage
   redis:

@@ -5,11 +5,14 @@ FROM ghcr.io/cirruslabs/flutter:3.35.7 AS build-stage
 # Set working directory
 WORKDIR /app
 
+# Increase Node heap size for better memory management
+ENV NODE_OPTIONS=--max-old-space-size=4096
+
 # Copy pubspec files
 COPY pubspec.* ./
 
-# Download dependencies
-RUN flutter pub get
+# Download dependencies with verbose output
+RUN flutter pub get --verbose
 
 # Copy the rest of the source code
 COPY . .
@@ -17,10 +20,15 @@ COPY . .
 # Configure web platform and build for production
 RUN flutter create . --platforms=web --project-name=latticelock
 
-# Build with API URL from build argument (defaults to localhost:8001)
-ARG PDF_API_BASE_URL=http://localhost:8001
-RUN flutter build web --release --no-pub --csp \
-    --dart-define=PDF_API_BASE_URL=${PDF_API_BASE_URL}
+# Build with API URL from build argument (defaults to localhost:8000)
+# Added verbose logging and disabled wasm dry run for faster builds
+ARG PDF_API_BASE_URL=http://localhost:8000
+RUN echo "=== Starting Flutter web build ===" && \
+    flutter build web --release --no-pub --csp --verbose \
+    --dart-define=PDF_API_BASE_URL=${PDF_API_BASE_URL} \
+    --no-wasm-dry-run && \
+    echo "=== Build completed successfully ===" && \
+    ls -lh build/web/
 
 # Stage 2: Nginx Runtime Stage
 FROM nginx:alpine AS runtime-stage
