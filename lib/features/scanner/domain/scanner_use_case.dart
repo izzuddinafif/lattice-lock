@@ -14,6 +14,16 @@ class ScannerUseCase {
       defaultValue: 'http://localhost:8000');
   static const Duration _timeout = Duration(seconds: 30);
 
+  /// Get the base URL for API requests
+  /// For web with relative base URL, construct from current origin
+  String _getEffectiveBaseUrl() {
+    if (_baseUrl == '/' || _baseUrl.isEmpty) {
+      // Use relative path - browser will use current origin
+      return '';
+    }
+    return _baseUrl;
+  }
+
   /// Analyze uploaded image and extract pattern
   ///
   /// Returns [ImageAnalysisResult] containing:
@@ -26,7 +36,7 @@ class ScannerUseCase {
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('$_baseUrl/analyze-image'),
+        Uri.parse('${_getEffectiveBaseUrl()}/analyze-image'),
       );
 
       // Attach image file
@@ -76,7 +86,7 @@ class ScannerUseCase {
 
       final response = await http
           .post(
-            Uri.parse('$_baseUrl/verify-pattern'),
+            Uri.parse('${_getEffectiveBaseUrl()}/verify-pattern'),
             headers: {'Content-Type': 'application/json'},
             body: ScannerRequest(
               pattern: pattern,
@@ -104,7 +114,7 @@ class ScannerUseCase {
   Future<MaterialProfile> getMaterialProfile() async {
     try {
       final response = await http
-          .get(Uri.parse('$_baseUrl/material-profile'))
+          .get(Uri.parse('${_getEffectiveBaseUrl()}/material-profile'))
           .timeout(_timeout);
 
       if (response.statusCode == 200) {

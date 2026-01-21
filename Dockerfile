@@ -11,11 +11,13 @@ COPY . .
 RUN flutter create . --platforms=web --project-name=latticelock
 
 # Use empty base URL for relative path (browser uses current origin)
-# Requests go to /generate-pdf which nginx proxies to backend
+# Requests go to API endpoints which nginx proxies to backend
 ARG PDF_API_BASE_URL=
+ARG SCANNER_API_BASE_URL=
 RUN echo "=== Starting Flutter web build ===" && \
     flutter build web --release --no-pub --csp --verbose \
     --dart-define=PDF_API_BASE_URL= \
+    --dart-define=SCANNER_API_BASE_URL= \
     --no-wasm-dry-run && \
     echo "=== Build completed successfully ==="
 
