@@ -3,6 +3,10 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
+# Disable NumPy CPU-specific optimizations for portability
+# This prevents "RuntimeError: NumPy was built with baseline optimizations" on different CPUs
+ENV NPY_DISABLE_CPU_FEATURES=1
+
 # Install system dependencies
 # libgl1: OpenGL library required by OpenCV
 # libglib2.0-0: GLib library required by OpenCV
